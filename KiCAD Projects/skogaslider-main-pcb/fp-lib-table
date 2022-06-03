@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name "Chunithm_Touch_Pad")(type "KiCad")(uri "${KIPRJMOD}/TouchPad.pretty")(options "")(descr ""))
+  (lib (name "RP2040_minimal")(type "KiCad")(uri "${KIPRJMOD}/RP2040_minimal.pretty")(options "")(descr ""))
+  (lib (name "WS2812B-4020")(type "KiCad")(uri "${KIPRJMOD}/WS2812B-4020.pretty")(options "")(descr ""))
+)
