@@ -3,4 +3,5 @@
   (lib (name "RP2040_minimal")(type "KiCad")(uri "${KIPRJMOD}/RP2040_minimal.pretty")(options "")(descr ""))
   (lib (name "WS2812B-4020")(type "KiCad")(uri "${KIPRJMOD}/WS2812B-4020.pretty")(options "")(descr ""))
   (lib (name "TS-1187A-B-A-B")(type "KiCad")(uri "${KIPRJMOD}/TS-1187A-B-A-B.pretty")(options "")(descr ""))
+  (lib (name "Skogaslider_Custom_Footprints")(type "KiCad")(uri "/Users/holmej/Desktop/Skogaslider_Custom_Footprints.pretty")(options "")(descr ""))
 )

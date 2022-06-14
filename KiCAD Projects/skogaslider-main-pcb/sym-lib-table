@@ -1,4 +1,5 @@
 (sym_lib_table
   (lib (name "MCU_RaspberryPi_RP2040")(type "Legacy")(uri "${KIPRJMOD}/MCU_RaspberryPi_RP2040.lib")(options "")(descr ""))
   (lib (name "TS-1187A-B-A-B")(type "Legacy")(uri "${KIPRJMOD}/TS-1187A-B-A-B.lib")(options "")(descr ""))
+  (lib (name "Skogaslider_Custom_Symbols")(type "KiCad")(uri "${KIPRJMOD}/Skogaslider_Custom_Symbols.kicad_sym")(options "")(descr ""))
 )
