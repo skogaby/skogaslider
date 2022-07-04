@@ -15,7 +15,6 @@ include(pico_sdk_import.cmake)
 project(skogaslider-firmware LANGUAGES C CXX ASM)
 
 set(PICO_CXX_ENABLE_EXCEPTIONS 1)
-
 set(PICO_CXX_ENABLE_RTTI 1)
 
 # Initialise the Raspberry Pi Pico SDK

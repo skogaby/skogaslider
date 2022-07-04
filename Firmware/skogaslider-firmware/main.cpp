@@ -70,22 +70,31 @@ int main() {
     uint32_t timeNow = to_ms_since_boot(get_absolute_time());
     uint32_t timeLog = timeNow + 1000;
     uint32_t outputCount = 0;
+    bool prevTouchStates[16] = { false };
+    bool updateLights = false;
 
     // Test loop to set outputs according to inputs being read on core1.
     while (true) {
         // Set the slider LEDs according to touch sensor states
-        if (touchSlider->didStateChange()) {
-            for (int i = 0; i < 16; i++) {
-                bool keyPressed = touchSlider->isKeyPressed(i);
+        for (int i = 0; i < 16; i++) {
+            bool keyPressed = touchSlider->isKeyPressed(i);
 
+            if (keyPressed != prevTouchStates[i]) {
                 if (keyPressed) {
                     ledStrip->setKey(i, PURPLE);
                 } else {
                     ledStrip->setKey(i, YELLOW);
                 }
+
+                updateLights = true;
             }
-            
+
+            prevTouchStates[i] = keyPressed;
+        }
+        
+        if (updateLights) {
             ledStrip->update();
+            updateLights = false;
         }
 
         outputCount++;
@@ -93,7 +102,7 @@ int main() {
 
         // Log the current poll rate
         if (timeNow > timeLog) {
-            printf("Current output rate: %iHz\n", outputCount);
+            printf("Current output rate: %i Hz\n", outputCount);
             timeLog = timeNow + 1000;
             outputCount = 0;
         }

@@ -12,9 +12,7 @@
  */
 TouchSlider::TouchSlider(): 
     touchSensors { MPR121(i2c0, I2C_ADDR_MPR121_0), MPR121(i2c0, I2C_ADDR_MPR121_1), MPR121(i2c0, I2C_ADDR_MPR121_2) },
-    states { false },
-    stateChanged(false) {
-
+    states { false } {
 }
 
 /**
@@ -22,7 +20,6 @@ TouchSlider::TouchSlider():
  */
 void TouchSlider::scanKeys() {
     uint8_t currStateIndex = 0;
-    stateChanged = false;
 
     // Loop over the 3 MPR121s and read every key
     for (uint8_t sensorIndex = 0; sensorIndex < 3; sensorIndex++) {
@@ -32,16 +29,14 @@ void TouchSlider::scanKeys() {
         
         // The 3rd MPR121 only contains 8 keys, so we make sure not to read the last 4 electrodes
         // on this sensor.
-        if (sensorIndex == 2) { lowerBound = 4; } else { lowerBound = 0; }
+        if (sensorIndex == 2) {
+            lowerBound = 4;
+        } else {
+            lowerBound = 0;
+        }
 
         for (int i = 11; i >= lowerBound; i--) {
-            bool newState = bitRead(touched, i);
-
-            if (states[currStateIndex] != newState) {
-                stateChanged = true;
-            }
-
-            states[currStateIndex++] = newState;
+            states[currStateIndex++] = bitRead(touched, i);
         }
     }
 }
@@ -54,13 +49,4 @@ void TouchSlider::scanKeys() {
  */
 bool TouchSlider::isKeyPressed(uint8_t key) {
     return states[key * 2] | states[key * 2 + 1];
-}
-
-/**
- * @brief Returns whether or not the state of any key changed on the last scan.
- * @return true If any key's state changed
- * @return false If no keys' states changed
- */
-bool TouchSlider::didStateChange() {
-    return stateChanged;
 }

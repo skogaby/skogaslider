@@ -25,13 +25,11 @@ class TouchSlider {
     private:
         MPR121 touchSensors[3];
         bool states[32];
-        bool stateChanged;
 
     public:
         TouchSlider();
         void scanKeys();
         bool isKeyPressed(uint8_t key);
-        bool didStateChange();
 };
 
 #endif
