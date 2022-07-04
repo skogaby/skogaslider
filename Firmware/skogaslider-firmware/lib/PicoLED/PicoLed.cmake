@@ -7,12 +7,6 @@ target_sources(PicoLed INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/VirtualStrip.cpp
     ${CMAKE_CURRENT_LIST_DIR}/PioStrip.cpp
     ${CMAKE_CURRENT_LIST_DIR}/WS2812B.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Effects/Fade.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Effects/Marquee.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Effects/Stars.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Effects/Comet.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Effects/Bounce.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/Effects/Particles.cpp
 )
 
 pico_generate_pio_header(PicoLed ${CMAKE_CURRENT_LIST_DIR}/WS2812B.pio)

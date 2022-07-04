@@ -26,7 +26,7 @@ class MPR121 {
 
     public:
         MPR121();
-        MPR121(i2c_inst_t *i2c_port, uint8_t i2cAddr);
+        MPR121(i2c_inst_t *i2cPort, uint8_t i2cAddr);
         void reset();
         void setThreshold(uint8_t touch, uint8_t release, uint8_t sensor);
         uint16_t filteredData(uint8_t electrode);
