@@ -43,37 +43,44 @@ void setup_gpio() {
  * while core0 will be responsible for outputs.
  */
 void core1_entry() {
+    // Keep track of the scan rate and log it each second
+    uint32_t timeNow = to_ms_since_boot(get_absolute_time());
+    uint32_t timeLog = timeNow + 1000;
+    uint32_t scanCount = 0;
+
     // Infinite loop to read all the input data from various sources
     while (true) {
         // Scan the touch keys
         touchSlider->scanKeys();
-    }
-}
 
-/**
- * @brief Update the lights based on the current state of inputs.
- */
-void updateLightsOutput() {
-    // Set the slider LEDs according to touch sensor states
-    for (int i = 0; i < 16; i++) {
-        bool keyPressed = touchSlider->isKeyPressed(i);
+        // Set the slider LEDslklmlkjklmlkjihijklmnijklmnijklmlkll according to touch sensor states,
+        // but let core 0 handle the actual call to *show* the lights
+        for (int i = 0; i < 16; i++) {
+            bool keyPressed = touchSlider->isKeyPressed(i);
 
-        if (keyPressed != touchStates[i]) {
-            if (keyPressed) {
-                ledStrip->setKey(i, PURPLE);
-            } else {
-                ledStrip->setKey(i, YELLOW);
+            if (keyPressed != touchStates[i]) {
+                if (keyPressed) {
+                    ledStrip->setKey(i, PURPLE);
+                } else {
+                    ledStrip->setKey(i, YELLOW);
+                }
+
+                updateLights = true;
             }
 
-            updateLights = true;
+            touchStates[i] = keyPressed;
         }
 
-        touchStates[i] = keyPressed;
-    }
-    
-    if (updateLights) {
-        ledStrip->update();
-        updateLights = false;
+        scanCount++;
+
+        // Log the current keyboard output rate once per second
+        timeNow = to_ms_since_boot(get_absolute_time());
+
+        if (timeNow > timeLog) {
+            printf("Core 1 input scan rate: %i Hz\n", scanCount);
+            timeLog = timeNow + 1000;
+            scanCount = 0;
+        }
     }
 }
 
@@ -130,9 +137,6 @@ int main() {
         // tinyusb device task
         tud_task();
 
-        // Update the lights
-        updateLightsOutput();
-
         // Send the keyboard outputs
         if (tud_hid_ready()) {
             uint8_t nkro_report[32] = { 0 };
@@ -151,6 +155,13 @@ int main() {
             }
 
             tud_hid_n_report(0x00, REPORT_ID_KEYBOARD, &nkro_report, sizeof(nkro_report));
+
+            // Update the lights
+            if (updateLights) {
+                ledStrip->update();
+                updateLights = false;
+            }
+
             outputCount++;
         }
 
@@ -158,7 +169,7 @@ int main() {
         timeNow = to_ms_since_boot(get_absolute_time());
 
         if (timeNow > timeLog) {
-            printf("Current output rate: %i Hz\n", outputCount);
+            printf("Core 0 keyboard output rate: %i Hz\n", outputCount);
             timeLog = timeNow + 1000;
             outputCount = 0;
         }
