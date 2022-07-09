@@ -8,6 +8,7 @@
 #ifndef _TOUCH_SLIDER_H_
 #define _TOUCH_SLIDER_H_
 
+#include <stdexcept>
 #include "../config.h"
 #include "mpr121/Mpr121.h"
 

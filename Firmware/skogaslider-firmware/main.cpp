@@ -7,15 +7,24 @@
 
 #include <PicoLed.hpp>
 #include <stdio.h>
+#include "tusb.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 
 #include "config.h"
 #include "leds/LedController.h"
 #include "slider/TouchSlider.h"
+#include "usb/usb_descriptors.h"
 
 TouchSlider* touchSlider;
 LedController* ledStrip;
+bool prevTouchStates[16] = { false };
+bool updateLights = false;
+
+const uint8_t keyCodes[16] = {
+    HID_KEY_A, HID_KEY_B, HID_KEY_C, HID_KEY_D, HID_KEY_E, HID_KEY_F, HID_KEY_G, HID_KEY_H,
+    HID_KEY_I, HID_KEY_J, HID_KEY_K, HID_KEY_L, HID_KEY_M, HID_KEY_N, HID_KEY_O, HID_KEY_P
+};
 
 /**
  * @brief Initializes the GPIO pins, sets up I2C, etc.
@@ -42,11 +51,56 @@ void core1_entry() {
 }
 
 /**
+ * @brief Update the lights based on the current state of inputs.
+ */
+void updateLightsOutput() {
+    // Set the slider LEDs according to touch sensor states
+    for (int i = 0; i < 16; i++) {
+        bool keyPressed = touchSlider->isKeyPressed(i);
+
+        if (keyPressed != prevTouchStates[i]) {
+            if (keyPressed) {
+                ledStrip->setKey(i, PURPLE);
+            } else {
+                ledStrip->setKey(i, YELLOW);
+            }
+
+            updateLights = true;
+        }
+
+        prevTouchStates[i] = keyPressed;
+    }
+    
+    if (updateLights) {
+        ledStrip->update();
+        updateLights = false;
+    }
+}
+
+// Invoked when received GET_REPORT control request
+// Application must fill buffer report's content and return its length.
+// Return zero will cause the stack to STALL request
+uint16_t tud_hid_get_report_cb(
+    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen
+) {
+    return 0;
+}
+
+// Invoked when received SET_REPORT control request or
+// received data on OUT endpoint ( Report ID = 0, Type = 0 )
+void tud_hid_set_report_cb(
+    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize
+) {
+    return;
+}
+
+/**
  * @brief Main firmware entrypoint.
  */
 int main() {
     stdio_init_all();
     setup_gpio();
+    tusb_init();
 
     // Initialize touch slider
     touchSlider = new TouchSlider();
@@ -70,37 +124,39 @@ int main() {
     uint32_t timeNow = to_ms_since_boot(get_absolute_time());
     uint32_t timeLog = timeNow + 1000;
     uint32_t outputCount = 0;
-    bool prevTouchStates[16] = { false };
-    bool updateLights = false;
 
     // Test loop to set outputs according to inputs being read on core1.
     while (true) {
-        // Set the slider LEDs according to touch sensor states
-        for (int i = 0; i < 16; i++) {
-            bool keyPressed = touchSlider->isKeyPressed(i);
+        // tinyusb device task
+        tud_task();
 
-            if (keyPressed != prevTouchStates[i]) {
-                if (keyPressed) {
-                    ledStrip->setKey(i, PURPLE);
-                } else {
-                    ledStrip->setKey(i, YELLOW);
+        // Update the lights
+        updateLightsOutput();
+
+        // Send the keyboard outputs
+        if (tud_hid_ready()) {
+            uint8_t nkro_report[32] = { 0 };
+
+            for (int i = 0; i < 16; i++) {
+                if (prevTouchStates[i]) {
+                    uint8_t bit = keyCodes[i] % 8;
+                    uint8_t byte = (keyCodes[i] / 8) + 1;
+
+                    if (keyCodes[i] >= 240 && keyCodes[i] <= 247) {
+                        nkro_report[0] |= (1 << bit);
+                    } else if (byte > 0 && byte <= 31) {
+                        nkro_report[byte] |= (1 << bit);
+                    }
                 }
-
-                updateLights = true;
             }
 
-            prevTouchStates[i] = keyPressed;
-        }
-        
-        if (updateLights) {
-            ledStrip->update();
-            updateLights = false;
+            tud_hid_n_report(0x00, REPORT_ID_KEYBOARD, &nkro_report, sizeof(nkro_report));
         }
 
+        // Log the current poll rate
         outputCount++;
         timeNow = to_ms_since_boot(get_absolute_time());
 
-        // Log the current poll rate
         if (timeNow > timeLog) {
             printf("Current output rate: %i Hz\n", outputCount);
             timeLog = timeNow + 1000;

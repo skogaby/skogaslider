@@ -99,7 +99,7 @@ void MPR121::reset() {
     // Second Filter Iterations, SFI=0 (4x samples taken)
     // Electrode Sample Interval, ESI=4 (16ms period)
     if (read8(MPR121_CONFIG2) != 0x24) {
-        // TODO: Handle this gracefully
+        return;
     }
 
     // Set touch and release trip thresholds

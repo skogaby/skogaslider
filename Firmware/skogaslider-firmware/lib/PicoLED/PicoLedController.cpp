@@ -1,6 +1,5 @@
 #include "PicoLed.hpp"
 #include "PicoLedController.hpp"
-#include "VirtualStrip.hpp"
 
 using std::min;
 using std::shared_ptr;
@@ -12,11 +11,6 @@ PicoLedController::PicoLedController()
 }
 
 PicoLedController::PicoLedController(shared_ptr<PicoLedTarget> target): target(target), mode(MODE_SET)
-{
-}
-
-PicoLedController::PicoLedController(PicoLedController& controller, uint start, uint end):
-target(new VirtualStrip(controller.target, start, end)), mode(MODE_SET)
 {
 }
 
