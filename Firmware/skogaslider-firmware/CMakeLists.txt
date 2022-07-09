@@ -16,7 +16,7 @@ include("lib/PicoLED/PicoLed.cmake")
 
 add_compile_definitions(PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64)
 
-add_executable(skogaslider-firmware main.cpp usb/usb_descriptors.c)
+add_executable(skogaslider-firmware main.cpp)
 
 pico_set_program_name(skogaslider-firmware "skogaslider-firmware")
 pico_set_program_version(skogaslider-firmware "0.1")
@@ -29,9 +29,7 @@ target_link_libraries(skogaslider-firmware
         pico_stdlib
         pico_multicore
         tinyusb_device
-        tinyusb_board
         hardware_i2c
-        hardware_dma
         hardware_pio
         PicoLed
 )

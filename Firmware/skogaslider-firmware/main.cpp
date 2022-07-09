@@ -18,7 +18,7 @@
 
 TouchSlider* touchSlider;
 LedController* ledStrip;
-bool prevTouchStates[16] = { false };
+bool touchStates[16] = { false };
 bool updateLights = false;
 
 const uint8_t keyCodes[16] = {
@@ -58,7 +58,7 @@ void updateLightsOutput() {
     for (int i = 0; i < 16; i++) {
         bool keyPressed = touchSlider->isKeyPressed(i);
 
-        if (keyPressed != prevTouchStates[i]) {
+        if (keyPressed != touchStates[i]) {
             if (keyPressed) {
                 ledStrip->setKey(i, PURPLE);
             } else {
@@ -68,7 +68,7 @@ void updateLightsOutput() {
             updateLights = true;
         }
 
-        prevTouchStates[i] = keyPressed;
+        touchStates[i] = keyPressed;
     }
     
     if (updateLights) {
@@ -98,9 +98,9 @@ void tud_hid_set_report_cb(
  * @brief Main firmware entrypoint.
  */
 int main() {
+    tusb_init();
     stdio_init_all();
     setup_gpio();
-    tusb_init();
 
     // Initialize touch slider
     touchSlider = new TouchSlider();
@@ -138,7 +138,7 @@ int main() {
             uint8_t nkro_report[32] = { 0 };
 
             for (int i = 0; i < 16; i++) {
-                if (prevTouchStates[i]) {
+                if (touchStates[i]) {
                     uint8_t bit = keyCodes[i] % 8;
                     uint8_t byte = (keyCodes[i] / 8) + 1;
 
@@ -151,10 +151,10 @@ int main() {
             }
 
             tud_hid_n_report(0x00, REPORT_ID_KEYBOARD, &nkro_report, sizeof(nkro_report));
+            outputCount++;
         }
 
-        // Log the current poll rate
-        outputCount++;
+        // Log the current keyboard output rate once per second
         timeNow = to_ms_since_boot(get_absolute_time());
 
         if (timeNow > timeLog) {
