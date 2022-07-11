@@ -23,7 +23,7 @@ pico_set_program_version(skogaslider-firmware "0.1")
 
 pico_enable_stdio_usb(skogaslider-firmware 1)
 
-target_include_directories(skogaslider-firmware PUBLIC ${CMAKE_CURRENT_LIST_DIR}/usb)
+target_include_directories(skogaslider-firmware PUBLIC ${CMAKE_CURRENT_LIST_DIR}/tinyusb)
 
 target_link_libraries(skogaslider-firmware
         pico_stdlib
@@ -35,14 +35,14 @@ target_link_libraries(skogaslider-firmware
 )
 
 target_sources(skogaslider-firmware PRIVATE
-        leds/LedController.h
-        leds/LedController.cpp
-        slider/TouchSlider.h
-        slider/TouchSlider.cpp
-        slider/mpr121/Mpr121.h
-        slider/mpr121/Mpr121.cpp
-        usb/usb_descriptors.h
-        usb/usb_descriptors.c
+        leds/led_controller.h
+        leds/led_controller.cpp
+        slider/touch_slider.h
+        slider/touch_slider.cpp
+        slider/mpr121/mpr121.h
+        slider/mpr121/mpr121.cpp
+        tinyusb/usb_descriptors.h
+        tinyusb/usb_descriptors.c
 )
 
 target_compile_options(skogaslider-firmware PRIVATE -fpermissive)

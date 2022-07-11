@@ -10,7 +10,7 @@
 #define _CONFIG_H_
 
 // Helper function to read a single bit from a number
-#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+#define bit_read(value, bit) (((value) >> (bit)) & 0x01)
 
 // Pin for RGB out. The air towers are part of the same logical strip as the slider.
 #define PIN_RGB_LED 2

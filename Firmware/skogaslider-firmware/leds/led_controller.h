@@ -5,8 +5,7 @@
  * @copyright Copyright (c) skogaby 2022
  */
 
-#ifndef _LED_CONTROLLER_H_
-#define _LED_CONTROLLER_H_
+#pragma once
 
 #include <PicoLed.hpp>
 #include "pico/stdlib.h"
@@ -27,14 +26,12 @@
  */
 class LedController {
     private:
-        PicoLed::PicoLedController ledStrip;
+        PicoLed::PicoLedController led_strip;
     public:
         LedController(uint8_t brightness);
-        void setAll(uint8_t red, uint8_t green, uint8_t blue);
-        void setKey(uint8_t key, uint8_t red, uint8_t green, uint8_t blue);
-        void setDivider(uint8_t divider, uint8_t red, uint8_t green, uint8_t blue);
-        void setBrightness(uint8_t brightness);
+        void set_all(uint8_t red, uint8_t green, uint8_t blue);
+        void set_key(uint8_t key, uint8_t red, uint8_t green, uint8_t blue);
+        void set_divider(uint8_t divider, uint8_t red, uint8_t green, uint8_t blue);
+        void set_brightness(uint8_t brightness);
         void update();
 };
-
-#endif

@@ -34,17 +34,17 @@ const uint8_t MPR121_SOFT_RESET = 0x80;
  * @brief Construct a new MPR121::MPR121 object with the default values, no reset.
  */
 MPR121::MPR121() {
-    this->i2cPort = i2c0;
-    this->i2cAddr = 0x5A;
+    this->i2c_port = i2c0;
+    this->i2c_addr = 0x5A;
 }
 
 /**
  * @brief Construct a new MPR121::MPR121 object and reset it to its default state.
  * @param i2cAddr The address to use for I2C communication for this sensor
  */
-MPR121::MPR121(i2c_inst_t *i2cPort, uint8_t i2cAddr) {
-    this->i2cPort = i2cPort;
-    this->i2cAddr = i2cAddr;
+MPR121::MPR121(i2c_inst_t *i2c_port, uint8_t i2c_addr) {
+    this->i2c_port = i2c_port;
+    this->i2c_addr = i2c_addr;
     reset();
 }
 
@@ -53,7 +53,7 @@ MPR121::MPR121(i2c_inst_t *i2cPort, uint8_t i2cAddr) {
  * @param reg The register to write to
  * @param val The value to write
  */
-void MPR121::write8(uint8_t reg, uint8_t val) {
+void MPR121::write_8(uint8_t reg, uint8_t val) {
     uint8_t buf[] = { reg, val };
     i2c_write_blocking(this->i2cPort, this->i2cAddr, buf, 2, false);
 }
@@ -63,7 +63,7 @@ void MPR121::write8(uint8_t reg, uint8_t val) {
  * @param reg The register to read from
  * @return uint8_t The value of the register
  */
-uint8_t MPR121::read8(uint8_t reg) {
+uint8_t MPR121::read_8(uint8_t reg) {
     uint8_t val;
     i2c_write_blocking(this->i2cPort, this->i2cAddr, &reg, 1, true);
     i2c_read_blocking(this->i2cPort, this->i2cAddr, &val, 1, false);
@@ -75,7 +75,7 @@ uint8_t MPR121::read8(uint8_t reg) {
  * @param reg The register to read from
  * @return uint8_t The value of the register
  */
-uint16_t MPR121::read16(uint8_t reg) {
+uint16_t MPR121::read_16(uint8_t reg) {
     uint8_t vals[2];
     i2c_write_blocking(this->i2cPort, this->i2cAddr, &reg, 1, true);
     i2c_read_blocking(this->i2cPort, this->i2cAddr, vals, 2, false);
@@ -87,18 +87,18 @@ uint16_t MPR121::read16(uint8_t reg) {
  */
 void MPR121::reset() {
     // Soft reset
-    write8(MPR121_SOFT_RESET, 0x63);
+    write_8(MPR121_SOFT_RESET, 0x63);
 
     // Reset electrode configuration to defaults - enter stop mode
     // Config registers are read-only unless in stop mode
-    write8(MPR121_ELECTRODE_CONFIG, 0x00);
+    write_8(MPR121_ELECTRODE_CONFIG, 0x00);
 
     // Check CDT, SFI, ESI configuration is at defaults
     // A soft reset puts CONFIG2 (0x5D) at 0x24
     // Charge Discharge Time, CDT=1 (0.5us charge time)
     // Second Filter Iterations, SFI=0 (4x samples taken)
     // Electrode Sample Interval, ESI=4 (16ms period)
-    if (read8(MPR121_CONFIG2) != 0x24) {
+    if (read_8(MPR121_CONFIG2) != 0x24) {
         return;
     }
 
@@ -108,35 +108,35 @@ void MPR121::reset() {
     }
 
     // Configure electrode filtered data and baseline registers
-    write8(MPR121_MAX_HALF_DELTA_RISING, 0x01);
-    write8(MPR121_MAX_HALF_DELTA_FALLING, 0x01);
-    write8(MPR121_NOISE_HALF_DELTA_RISING, 0x01);
-    write8(MPR121_NOISE_HALF_DELTA_FALLING, 0x05);
-    write8(MPR121_NOISE_HALF_DELTA_TOUCHED, 0x00);
-    write8(MPR121_NOISE_COUNT_LIMIT_RISING, 0x0E);
-    write8(MPR121_NOISE_COUNT_LIMIT_FALLING, 0x01);
-    write8(MPR121_NOISE_COUNT_LIMIT_TOUCHED, 0x00);
-    write8(MPR121_FILTER_DELAY_COUNT_RISING, 0x00);
-    write8(MPR121_FILTER_DELAY_COUNT_FALLING, 0x00);
-    write8(MPR121_FILTER_DELAY_COUNT_TOUCHED, 0x00);
+    write_8(MPR121_MAX_HALF_DELTA_RISING, 0x01);
+    write_8(MPR121_MAX_HALF_DELTA_FALLING, 0x01);
+    write_8(MPR121_NOISE_HALF_DELTA_RISING, 0x01);
+    write_8(MPR121_NOISE_HALF_DELTA_FALLING, 0x05);
+    write_8(MPR121_NOISE_HALF_DELTA_TOUCHED, 0x00);
+    write_8(MPR121_NOISE_COUNT_LIMIT_RISING, 0x0E);
+    write_8(MPR121_NOISE_COUNT_LIMIT_FALLING, 0x01);
+    write_8(MPR121_NOISE_COUNT_LIMIT_TOUCHED, 0x00);
+    write_8(MPR121_FILTER_DELAY_COUNT_RISING, 0x00);
+    write_8(MPR121_FILTER_DELAY_COUNT_FALLING, 0x00);
+    write_8(MPR121_FILTER_DELAY_COUNT_TOUCHED, 0x00);
 
     // Set config registers
     // Debounce Touch, DT=0 (increase up to 7 to reduce noise)
     // Debounce Release, DR=0 (increase up to 7 to reduce noise)
-    write8(MPR121_DEBOUNCE, 0x00);
+    write_8(MPR121_DEBOUNCE, 0x00);
     // First Filter Iterations, FFI=0 (6x samples taken)
     // Charge Discharge Current, CDC=16 (16uA)
-    write8(MPR121_CONFIG1, 0x10);
+    write_8(MPR121_CONFIG1, 0x10);
     // Charge Discharge Time, CDT=1 (0.5us charge time)
     // Second Filter Iterations, SFI=0 (4x samples taken)
     // Electrode Sample Interval, ESI=0 (1ms period)
-    write8(MPR121_CONFIG2, 0x20);
+    write_8(MPR121_CONFIG2, 0x20);
 
     // Enable all electrodes - enter run mode
     // Calibration Lock, CL=10 (baseline tracking enabled, initial value 5 high bits)
     // Proximity Enable, ELEPROX_EN=0 (proximity detection disabled)
     // Electrode Enable, ELE_EN=15 (enter run mode for 12 electrodes)
-    write8(MPR121_ELECTRODE_CONFIG, 0x8F);
+    write_8(MPR121_ELECTRODE_CONFIG, 0x8F);
 }
 
 /**
@@ -146,16 +146,16 @@ void MPR121::reset() {
  * @param release The release threshold
  * @param sensor Which sensor/electrode these values are for
  */
-void MPR121::setThreshold(uint8_t touch, uint8_t release, uint8_t sensor) {
+void MPR121::set_threshold(uint8_t touch, uint8_t release, uint8_t sensor) {
     // You can only modify thresholds when in stop mode
-    uint8_t config = read8(MPR121_ELECTRODE_CONFIG);
-    if (config != 0) { write8(MPR121_ELECTRODE_CONFIG, 0); }
+    uint8_t config = read_8(MPR121_ELECTRODE_CONFIG);
+    if (config != 0) { write_8(MPR121_ELECTRODE_CONFIG, 0); }
 
-    write8(MPR121_TOUCH_THRESHOLD + sensor * 2, touch);
-    write8(MPR121_RELEASE_THRESHOLD + sensor * 2, release);
+    write_8(MPR121_TOUCH_THRESHOLD + sensor * 2, touch);
+    write_8(MPR121_RELEASE_THRESHOLD + sensor * 2, release);
 
     // Return to previous mode if temporarily entered stop mode
-    if (config != 0) { write8(MPR121_ELECTRODE_CONFIG, config); }
+    if (config != 0) { write_8(MPR121_ELECTRODE_CONFIG, config); }
 }
 
 /**
@@ -164,8 +164,8 @@ void MPR121::setThreshold(uint8_t touch, uint8_t release, uint8_t sensor) {
  * @param electrode The electrode to read
  * @return uint16_t The filtered data from the given electrode
  */
-uint16_t MPR121::filteredData(uint8_t electrode) {
-    return read16(MPR121_ELECTRODE_FILTERED_DATA + electrode * 2);
+uint16_t MPR121::filtered_data(uint8_t electrode) {
+    return read_16(MPR121_ELECTRODE_FILTERED_DATA + electrode * 2);
 }
 
 /**
@@ -174,8 +174,8 @@ uint16_t MPR121::filteredData(uint8_t electrode) {
  * @param electrode The electrode to read
  * @return uint8_t The baseline data from the given electrode
  */
-uint8_t MPR121::baselineData(uint8_t electrode) {
-    return read8(MPR121_BASELINE_VALUE + electrode) << 2;
+uint8_t MPR121::baseline_data(uint8_t electrode) {
+    return read_8(MPR121_BASELINE_VALUE + electrode) << 2;
 }
 
 /**
@@ -183,8 +183,8 @@ uint8_t MPR121::baselineData(uint8_t electrode) {
  * the electrodes of this sensor.
  * @return uint16_t The bitfield representing touch states
  */
-uint16_t MPR121::getAllTouched() {
-    return read16(MPR121_TOUCH_STATUS);
+uint16_t MPR121::get_all_touched() {
+    return read_16(MPR121_TOUCH_STATUS);
 }
 
 /**
@@ -193,7 +193,7 @@ uint16_t MPR121::getAllTouched() {
  * @return true If the electrode is being touched
  * @return false If the electrode is not being touched
  */
-bool MPR121::isElectrodeTouched(uint8_t electrode) {
-    uint16_t t = getAllTouched();
+bool MPR121::is_electrode_touched(uint8_t electrode) {
+    uint16_t t = get_all_touched();
     return (t & (1 << electrode)) != 0;
 }

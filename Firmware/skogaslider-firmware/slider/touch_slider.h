@@ -5,12 +5,11 @@
  * @copyright Copyright (c) 2022
  */
 
-#ifndef _TOUCH_SLIDER_H_
-#define _TOUCH_SLIDER_H_
+#pragma once
 
 #include <stdexcept>
 #include "../config.h"
-#include "mpr121/Mpr121.h"
+#include "mpr121/mpr121.h"
 
 #define I2C_ADDR_MPR121_0 0x5A
 #define I2C_ADDR_MPR121_1 0x5C
@@ -24,13 +23,11 @@
  */
 class TouchSlider {
     private:
-        MPR121 touchSensors[3];
+        MPR121 touch_sensors[3];
         bool states[32];
 
     public:
         TouchSlider();
-        void scanKeys();
-        bool isKeyPressed(uint8_t key);
+        void scan_keys();
+        bool is_key_pressed(uint8_t key);
 };
-
-#endif

@@ -51,16 +51,14 @@ tusb_desc_device_t const desc_device_key = {
     .bDeviceSubClass = 0x00,
     .bDeviceProtocol = 0x00,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-
     .idVendor = 0x1337,
     .idProduct = USB_PID,
     .bcdDevice = 0x0100,
-
     .iManufacturer = 0x01,
     .iProduct = 0x02,
     .iSerialNumber = 0x04,
-
-    .bNumConfigurations = 0x01};
+    .bNumConfigurations = 0x01
+};
 
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
@@ -178,4 +176,16 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
   _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
 
   return _desc_str;
+}
+
+uint16_t tud_hid_get_report_cb(
+    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen
+) {
+    return 0;
+}
+
+void tud_hid_set_report_cb(
+    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize
+) {
+    return;
 }

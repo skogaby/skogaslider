@@ -5,8 +5,7 @@
  * @copyright Copyright (c) skogaby 2022
  */
 
-#ifndef _MPR121_H_
-#define _MPR121_H_
+#pragma once
 
 #include "pico.h"
 #include "hardware/i2c.h"
@@ -17,22 +16,20 @@
  */
 class MPR121 {
     private:
-        i2c_inst_t *i2cPort;
-        uint8_t i2cAddr;
+        i2c_inst_t *i2c_port;
+        uint8_t i2c_addr;
 
-        void write8(uint8_t reg, uint8_t val);
-        uint8_t read8(uint8_t reg);
-        uint16_t read16(uint8_t reg);
+        void write_8(uint8_t reg, uint8_t val);
+        uint8_t read_8(uint8_t reg);
+        uint16_t read_16(uint8_t reg);
 
     public:
         MPR121();
-        MPR121(i2c_inst_t *i2cPort, uint8_t i2cAddr);
+        MPR121(i2c_inst_t *i2c_port, uint8_t i2c_addr);
         void reset();
-        void setThreshold(uint8_t touch, uint8_t release, uint8_t sensor);
-        uint16_t filteredData(uint8_t electrode);
-        uint8_t baselineData(uint8_t electrode);
-        uint16_t getAllTouched();
-        bool isElectrodeTouched(uint8_t electrode);
+        void set_threshold(uint8_t touch, uint8_t release, uint8_t sensor);
+        uint16_t filtered_data(uint8_t electrode);
+        uint8_t baseline_data(uint8_t electrode);
+        uint16_t get_all_touched();
+        bool is_electrode_touched(uint8_t electrode);
 };
-
-#endif

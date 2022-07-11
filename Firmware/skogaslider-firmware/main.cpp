@@ -12,16 +12,16 @@
 #include "pico/multicore.h"
 
 #include "config.h"
-#include "leds/LedController.h"
-#include "slider/TouchSlider.h"
-#include "usb/usb_descriptors.h"
+#include "leds/led_controller.h"
+#include "slider/touch_slider.h"
+#include "tinyusb/usb_descriptors.h"
 
-TouchSlider* touchSlider;
-LedController* ledStrip;
-bool touchStates[16] = { false };
-bool updateLights = false;
+touch_slider* touch_slider;
+LedController* led_strip;
+bool touch_states[16] = { false };
+bool update_lights = false;
 
-const uint8_t keyCodes[16] = {
+const uint8_t key_codes[16] = {
     HID_KEY_A, HID_KEY_B, HID_KEY_C, HID_KEY_D, HID_KEY_E, HID_KEY_F, HID_KEY_G, HID_KEY_H,
     HID_KEY_I, HID_KEY_J, HID_KEY_K, HID_KEY_L, HID_KEY_M, HID_KEY_N, HID_KEY_O, HID_KEY_P
 };
@@ -42,63 +42,46 @@ void setup_gpio() {
  * @brief Entrypoint for the second core. Currently, core1 is responsible for polling all the inputs,
  * while core0 will be responsible for outputs.
  */
-void core1_entry() {
+void main_core_1() {
     // Keep track of the scan rate and log it each second
-    uint32_t timeNow = to_ms_since_boot(get_absolute_time());
-    uint32_t timeLog = timeNow + 1000;
-    uint32_t scanCount = 0;
+    uint32_t time_now = to_ms_since_boot(get_absolute_time());
+    uint32_t time_log = time_now + 1000;
+    uint32_t scan_count = 0;
 
     // Infinite loop to read all the input data from various sources
     while (true) {
         // Scan the touch keys
-        touchSlider->scanKeys();
+        touch_slider->scan_keys();
 
         // Set the slider LEDslklmlkjklmlkjihijklmnijklmnijklmlkll according to touch sensor states,
         // but let core 0 handle the actual call to *show* the lights
         for (int i = 0; i < 16; i++) {
-            bool keyPressed = touchSlider->isKeyPressed(i);
+            bool key_pressed = touch_slider->is_key_pressed(i);
 
-            if (keyPressed != touchStates[i]) {
-                if (keyPressed) {
-                    ledStrip->setKey(i, PURPLE);
+            if (key_pressed != touch_states[i]) {
+                if (key_pressed) {
+                    led_strip->set_key(i, PURPLE);
                 } else {
-                    ledStrip->setKey(i, YELLOW);
+                    led_strip->set_key(i, YELLOW);
                 }
 
-                updateLights = true;
+                update_lights = true;
             }
 
-            touchStates[i] = keyPressed;
+            touch_states[i] = key_pressed;
         }
 
-        scanCount++;
+        scan_count++;
 
         // Log the current keyboard output rate once per second
-        timeNow = to_ms_since_boot(get_absolute_time());
+        time_now = to_ms_since_boot(get_absolute_time());
 
-        if (timeNow > timeLog) {
-            printf("Core 1 input scan rate: %i Hz\n", scanCount);
-            timeLog = timeNow + 1000;
-            scanCount = 0;
+        if (time_now > time_log) {
+            printf("Core 1 input scan rate: %i Hz\n", scan_count);
+            time_log = time_now + 1000;
+            scan_count = 0;
         }
     }
-}
-
-// Invoked when received GET_REPORT control request
-// Application must fill buffer report's content and return its length.
-// Return zero will cause the stack to STALL request
-uint16_t tud_hid_get_report_cb(
-    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen
-) {
-    return 0;
-}
-
-// Invoked when received SET_REPORT control request or
-// received data on OUT endpoint ( Report ID = 0, Type = 0 )
-void tud_hid_set_report_cb(
-    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize
-) {
-    return;
 }
 
 /**
@@ -110,27 +93,27 @@ int main() {
     setup_gpio();
 
     // Initialize touch slider
-    touchSlider = new TouchSlider();
+    touch_slider = new TouchSlider();
 
     // Initialize LED strip
-    ledStrip = new LedController(51);
+    led_strip = new LedController(51);
 
     // Set the initial colors for the slider
     for (int i = 0; i < 15; i++) {
-        ledStrip->setKey(i, YELLOW);
-        ledStrip->setDivider(i, PURPLE);
+        led_strip->set_key(i, YELLOW);
+        led_strip->set_divider(i, PURPLE);
     }
 
-    ledStrip->setKey(15, YELLOW);
-    ledStrip->update();
+    led_strip->set_key(15, YELLOW);
+    led_strip->update();
 
     // Launch the input code on the second core
-    multicore_launch_core1(core1_entry);
+    multicore_launch_core1(main_core_1);
 
     // Keep track of the output rate and log it each second
-    uint32_t timeNow = to_ms_since_boot(get_absolute_time());
-    uint32_t timeLog = timeNow + 1000;
-    uint32_t outputCount = 0;
+    uint32_t time_now = to_ms_since_boot(get_absolute_time());
+    uint32_t time_log = time_now + 1000;
+    uint32_t output_count = 0;
 
     // Test loop to set outputs according to inputs being read on core1.
     while (true) {
@@ -142,11 +125,11 @@ int main() {
             uint8_t nkro_report[32] = { 0 };
 
             for (int i = 0; i < 16; i++) {
-                if (touchStates[i]) {
-                    uint8_t bit = keyCodes[i] % 8;
-                    uint8_t byte = (keyCodes[i] / 8) + 1;
+                if (touch_states[i]) {
+                    uint8_t bit = key_codes[i] % 8;
+                    uint8_t byte = (key_codes[i] / 8) + 1;
 
-                    if (keyCodes[i] >= 240 && keyCodes[i] <= 247) {
+                    if (key_codes[i] >= 240 && key_codes[i] <= 247) {
                         nkro_report[0] |= (1 << bit);
                     } else if (byte > 0 && byte <= 31) {
                         nkro_report[byte] |= (1 << bit);
@@ -157,21 +140,21 @@ int main() {
             tud_hid_n_report(0x00, REPORT_ID_KEYBOARD, &nkro_report, sizeof(nkro_report));
 
             // Update the lights
-            if (updateLights) {
-                ledStrip->update();
-                updateLights = false;
+            if (update_lights) {
+                led_strip->update();
+                update_lights = false;
             }
 
-            outputCount++;
+            output_count++;
         }
 
         // Log the current keyboard output rate once per second
-        timeNow = to_ms_since_boot(get_absolute_time());
+        time_now = to_ms_since_boot(get_absolute_time());
 
-        if (timeNow > timeLog) {
-            printf("Core 0 keyboard output rate: %i Hz\n", outputCount);
-            timeLog = timeNow + 1000;
-            outputCount = 0;
+        if (time_now > time_log) {
+            printf("Core 0 keyboard output rate: %i Hz\n", output_count);
+            time_log = time_now + 1000;
+            output_count = 0;
         }
     }
 
