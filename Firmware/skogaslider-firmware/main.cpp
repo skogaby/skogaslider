@@ -1,5 +1,5 @@
 /**
- * @file skogaslider-firmware.cpp
+ * @file main.cpp
  * @author skogaby <skogabyskogaby@gmail.com>
  * @date 2022-07-03
  * @copyright Copyright (c) skogaby 2022
@@ -35,7 +35,6 @@ bool key_states[16] = { false };
 /** This flag indicates that the light state has been updated and the lights should be refreshed */
 bool update_lights = false;
 
-// Function prototypes
 void main_core_1();
 
 /**
@@ -153,11 +152,11 @@ void main_core_1() {
 
         scan_count++;
 
-        // Log the current keyboard output rate once per second
+        // Log the current touch scan rate once per second
         time_now = to_ms_since_boot(get_absolute_time());
 
         if (time_now > time_log) {
-            printf("[Core 1] input scan rate: %i Hz\n", scan_count);
+            printf("[Core 1] Input scan rate: %i Hz\n", scan_count);
             time_log = time_now + 1000;
             scan_count = 0;
         }
