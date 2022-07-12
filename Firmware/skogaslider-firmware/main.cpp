@@ -15,16 +15,28 @@
 #include "leds/led_controller.h"
 #include "slider/touch_slider.h"
 #include "tinyusb/usb_descriptors.h"
+#include "usb_output/usb_output.h"
 
-touch_slider* touch_slider;
+/** 
+ * This divisor is used for limiting the lights output rate, by dividing the USB output rate (1000Hz) by this divisor and tying
+ * the lights output to the USB output, if a counter reaches (LIGHTS_UPDATE_DIVISOR - 1). This effectively divides 1000 by 
+ * LIGHTS_UPDATE_DIVISOR and this is the update rate of the lights.
+ */
+#define LIGHTS_UPDATE_DIVISOR 4
+
+/** Manages handling touch events and updating touch state */
+TouchSlider* touch_slider;
+/** Manages the LED strip and abstracts away LED indices from key and divider indices */
 LedController* led_strip;
-bool touch_states[16] = { false };
+/** Handles sending keyboard outputs to the host computer */
+UsbOutput* usb_output;
+/** This keeps track of the touch states of the keys for reactive lighting updates (combines each key's sensors into one ORed state) */
+bool key_states[16] = { false };
+/** This flag indicates that the light state has been updated and the lights should be refreshed */
 bool update_lights = false;
 
-const uint8_t key_codes[16] = {
-    HID_KEY_A, HID_KEY_B, HID_KEY_C, HID_KEY_D, HID_KEY_E, HID_KEY_F, HID_KEY_G, HID_KEY_H,
-    HID_KEY_I, HID_KEY_J, HID_KEY_K, HID_KEY_L, HID_KEY_M, HID_KEY_N, HID_KEY_O, HID_KEY_P
-};
+// Function prototypes
+void main_core_1();
 
 /**
  * @brief Initializes the GPIO pins, sets up I2C, etc.
@@ -36,6 +48,74 @@ void setup_gpio() {
     gpio_set_function(PIN_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(PIN_SDA);
     gpio_pull_up(PIN_SCL);
+}
+
+/**
+ * @brief Main firmware entrypoint.
+ */
+int main() {
+    tusb_init();
+    stdio_init_all();
+    setup_gpio();
+
+    // Initialize inputs and outputs
+    touch_slider = new TouchSlider();
+    led_strip = new LedController(50);
+    usb_output = new UsbOutput();
+
+    // Launch the input code on the second core
+    multicore_launch_core1(main_core_1);
+
+    // Keep track of the output rate and log it each second
+    uint32_t time_now = to_ms_since_boot(get_absolute_time());
+    uint32_t time_log = time_now + 1000;
+    uint32_t output_count = 0;
+    uint32_t lights_update_count = 0;
+
+    // Limit how often we update lights, relative to how often we send USB updates
+    uint32_t lights_update_limiter = 0;
+
+    while (true) {
+        // tinyusb device task, required to call this frequently since we're
+        // not using a RTOS
+        tud_task();
+
+        // Check if the host is ready to receive another USB packet
+        if (tud_hid_ready()) {
+            // Send the keyboard updates
+            usb_output->set_slider_sensors(touch_slider->states);
+            usb_output->send_update();
+
+            // Update the lights if necessary, based on how many USB frames
+            // to skip before updating the lights
+            if (lights_update_limiter == (LIGHTS_UPDATE_DIVISOR - 1)) {
+                if (update_lights) {
+                    led_strip->update();
+                    update_lights = false;
+                }
+
+                lights_update_limiter = 0;
+                lights_update_count++;
+            } else {
+                lights_update_limiter++;
+            }
+
+            output_count++;
+        }
+
+        // Log the current keyboard output rate once per second
+        time_now = to_ms_since_boot(get_absolute_time());
+
+        if (time_now > time_log) {
+            printf("[Core 0] Keyboard output rate: %i Hz | Lights update rate: %i Hz\n",
+                output_count, lights_update_count);
+            time_log = time_now + 1000;
+            output_count = 0;
+            lights_update_count = 0;
+        }
+    }
+
+    return 0;
 }
 
 /**
@@ -53,14 +133,14 @@ void main_core_1() {
         // Scan the touch keys
         touch_slider->scan_keys();
 
-        // Set the slider LEDslklmlkjklmlkjihijklmnijklmnijklmlkll according to touch sensor states,
+        // Set the slider LEDs according to touch sensor states,
         // but let core 0 handle the actual call to *show* the lights
         for (int i = 0; i < 16; i++) {
             bool key_pressed = touch_slider->is_key_pressed(i);
 
-            if (key_pressed != touch_states[i]) {
+            if (key_pressed != key_states[i]) {
                 if (key_pressed) {
-                    led_strip->set_key(i, PURPLE);
+                    led_strip->set_key(i, BLUE);
                 } else {
                     led_strip->set_key(i, YELLOW);
                 }
@@ -68,7 +148,7 @@ void main_core_1() {
                 update_lights = true;
             }
 
-            touch_states[i] = key_pressed;
+            key_states[i] = key_pressed;
         }
 
         scan_count++;
@@ -77,86 +157,9 @@ void main_core_1() {
         time_now = to_ms_since_boot(get_absolute_time());
 
         if (time_now > time_log) {
-            printf("Core 1 input scan rate: %i Hz\n", scan_count);
+            printf("[Core 1] input scan rate: %i Hz\n", scan_count);
             time_log = time_now + 1000;
             scan_count = 0;
         }
     }
-}
-
-/**
- * @brief Main firmware entrypoint.
- */
-int main() {
-    tusb_init();
-    stdio_init_all();
-    setup_gpio();
-
-    // Initialize touch slider
-    touch_slider = new TouchSlider();
-
-    // Initialize LED strip
-    led_strip = new LedController(51);
-
-    // Set the initial colors for the slider
-    for (int i = 0; i < 15; i++) {
-        led_strip->set_key(i, YELLOW);
-        led_strip->set_divider(i, PURPLE);
-    }
-
-    led_strip->set_key(15, YELLOW);
-    led_strip->update();
-
-    // Launch the input code on the second core
-    multicore_launch_core1(main_core_1);
-
-    // Keep track of the output rate and log it each second
-    uint32_t time_now = to_ms_since_boot(get_absolute_time());
-    uint32_t time_log = time_now + 1000;
-    uint32_t output_count = 0;
-
-    // Test loop to set outputs according to inputs being read on core1.
-    while (true) {
-        // tinyusb device task
-        tud_task();
-
-        // Send the keyboard outputs
-        if (tud_hid_ready()) {
-            uint8_t nkro_report[32] = { 0 };
-
-            for (int i = 0; i < 16; i++) {
-                if (touch_states[i]) {
-                    uint8_t bit = key_codes[i] % 8;
-                    uint8_t byte = (key_codes[i] / 8) + 1;
-
-                    if (key_codes[i] >= 240 && key_codes[i] <= 247) {
-                        nkro_report[0] |= (1 << bit);
-                    } else if (byte > 0 && byte <= 31) {
-                        nkro_report[byte] |= (1 << bit);
-                    }
-                }
-            }
-
-            tud_hid_n_report(0x00, REPORT_ID_KEYBOARD, &nkro_report, sizeof(nkro_report));
-
-            // Update the lights
-            if (update_lights) {
-                led_strip->update();
-                update_lights = false;
-            }
-
-            output_count++;
-        }
-
-        // Log the current keyboard output rate once per second
-        time_now = to_ms_since_boot(get_absolute_time());
-
-        if (time_now > time_log) {
-            printf("Core 0 keyboard output rate: %i Hz\n", output_count);
-            time_log = time_now + 1000;
-            output_count = 0;
-        }
-    }
-
-    return 0;
 }

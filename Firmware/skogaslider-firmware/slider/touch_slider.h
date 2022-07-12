@@ -24,9 +24,9 @@
 class TouchSlider {
     private:
         MPR121 touch_sensors[3];
-        bool states[32];
 
     public:
+        bool states[32];
         TouchSlider();
         void scan_keys();
         bool is_key_pressed(uint8_t key);

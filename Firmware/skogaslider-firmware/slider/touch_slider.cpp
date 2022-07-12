@@ -47,7 +47,7 @@ void TouchSlider::scan_keys() {
 }
 
 /**
- * @brief Returns the pressed status of the given key.
+ * @brief Returns the pressed status of the given key, checking both sensors for the key.
  * @param key The key to read
  * @return true If either or both sensors on the key is pressed
  * @return false If neither sensor on the key is pressed

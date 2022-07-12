@@ -35,14 +35,11 @@ target_link_libraries(skogaslider-firmware
 )
 
 target_sources(skogaslider-firmware PRIVATE
-        leds/led_controller.h
         leds/led_controller.cpp
-        slider/touch_slider.h
         slider/touch_slider.cpp
-        slider/mpr121/mpr121.h
         slider/mpr121/mpr121.cpp
-        tinyusb/usb_descriptors.h
         tinyusb/usb_descriptors.c
+        usb_output/usb_output.cpp
 )
 
 target_compile_options(skogaslider-firmware PRIVATE -fpermissive)

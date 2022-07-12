@@ -40,7 +40,7 @@ MPR121::MPR121() {
 
 /**
  * @brief Construct a new MPR121::MPR121 object and reset it to its default state.
- * @param i2cAddr The address to use for I2C communication for this sensor
+ * @param i2c_addr The address to use for I2C communication for this sensor
  */
 MPR121::MPR121(i2c_inst_t *i2c_port, uint8_t i2c_addr) {
     this->i2c_port = i2c_port;
@@ -55,7 +55,7 @@ MPR121::MPR121(i2c_inst_t *i2c_port, uint8_t i2c_addr) {
  */
 void MPR121::write_8(uint8_t reg, uint8_t val) {
     uint8_t buf[] = { reg, val };
-    i2c_write_blocking(this->i2cPort, this->i2cAddr, buf, 2, false);
+    i2c_write_blocking(this->i2c_port, this->i2c_addr, buf, 2, false);
 }
 
 /**
@@ -65,8 +65,8 @@ void MPR121::write_8(uint8_t reg, uint8_t val) {
  */
 uint8_t MPR121::read_8(uint8_t reg) {
     uint8_t val;
-    i2c_write_blocking(this->i2cPort, this->i2cAddr, &reg, 1, true);
-    i2c_read_blocking(this->i2cPort, this->i2cAddr, &val, 1, false);
+    i2c_write_blocking(this->i2c_port, this->i2c_addr, &reg, 1, true);
+    i2c_read_blocking(this->i2c_port, this->i2c_addr, &val, 1, false);
     return val;
 }
 
@@ -77,8 +77,8 @@ uint8_t MPR121::read_8(uint8_t reg) {
  */
 uint16_t MPR121::read_16(uint8_t reg) {
     uint8_t vals[2];
-    i2c_write_blocking(this->i2cPort, this->i2cAddr, &reg, 1, true);
-    i2c_read_blocking(this->i2cPort, this->i2cAddr, vals, 2, false);
+    i2c_write_blocking(this->i2c_port, this->i2c_addr, &reg, 1, true);
+    i2c_read_blocking(this->i2c_port, this->i2c_addr, vals, 2, false);
     return vals[1] << 8 | vals[0];
 }
 
@@ -104,7 +104,7 @@ void MPR121::reset() {
 
     // Set touch and release trip thresholds
     for (int i = 0; i < 12; i++) {
-        setThreshold(15, 7, i);
+        set_threshold(15, 7, i);
     }
 
     // Configure electrode filtered data and baseline registers
