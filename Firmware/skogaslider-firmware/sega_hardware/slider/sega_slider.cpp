@@ -18,8 +18,7 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
     hw_info_response_data {
         0x31, 0x35, 0x33, 0x33, 0x30, 0x20, 0x20, 0x20,
         0xA0, 0x30, 0x36, 0x37, 0x31, 0x32, 0xFF, 0x90,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        0x00
     }
 {
     // Packet to re-use for slider reports, the address for the data
@@ -32,7 +31,7 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
     // board and model information
     hw_info_packet.command_id = GET_HW_INFO;
     hw_info_packet.data = &hw_info_response_data[0];
-    hw_info_packet.length = 32;
+    hw_info_packet.length = 17;
 
     // Packet to re-use for responses whose bodies are empty. Set the
     // command ID as needed
