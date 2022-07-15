@@ -43,9 +43,12 @@ SegaSlider* sega_slider;
 bool key_states[16] = { false };
 /** This flag indicates that the light state has been updated and the lights should be refreshed (not for arcade protocol mode) */
 bool update_lights = false;
+/** Used during serial reads, to indicate if the last byte read was an escape byte, in case the next byte is not available yet */
+bool last_byte_escape = false;
 
 void main_core_1();
-uint8_t read_unescaped_byte(uint8_t itf);
+int read_unescaped_slider_byte();
+int read_slider_byte();
 
 /**
  * @brief Initializes the GPIO pins, sets up I2C, etc.
@@ -88,12 +91,13 @@ int main() {
 #else
     // Buffer to contain incoming serial packets
     uint8_t serial_buffer[256] = { 0 };
-    // These help us track in-progress packet reads, where we've read the header
-    // but the data is not all available yet
+    // These help us track in-progress packet reads
     uint8_t sync = 0;
     uint8_t command_id = 0;
-    uint8_t data_length = 0;
-    bool packet_in_progress = false;
+    int data_length = -1;
+    int bytes_read = 0;
+    int checksum = -1;
+    int next_byte = -1;
 
 #endif
 
@@ -137,46 +141,65 @@ int main() {
             lights_update_count = 0;
         }
 #else
-        // Check if there are any serial packets from the host, 4 bytes is the bare
-        // minimum for a packet (SYNC, COMMAND_ID, LENGTH, CHECKSUM)
-        if (tud_cdc_n_available(ITF_SLIDER) >= 4 || packet_in_progress) {
-            // Make sure we can read the packet successfully
-            if (!packet_in_progress) {
-                sync = tud_cdc_n_read_char(ITF_SLIDER);
-            }
+        // Check if any serial packets are available. Since we can't make any timing
+        // guarantees about when we'll read and process data relative to when each byte
+        // arrives, this simple state machine processes packets one byte at a time
+        // and tracks partial packets between loop iterations, processing them once
+        // they fully arrive
 
-            if (sync == PACKET_BEGIN) {
-                if (!packet_in_progress) {
-                    command_id = read_unescaped_byte(ITF_SLIDER);
-                    data_length = read_unescaped_byte(ITF_SLIDER);
-                }
+        // If we're at the beginning of a packet, we need to read bytes without unescaping
+        if (sync == 0) {
+            next_byte = read_slider_byte();
+        } else {
+            next_byte = read_unescaped_slider_byte();
+        }
 
-                if (tud_cdc_n_available(ITF_SLIDER) >= data_length) {
-                    // Read data byte by byte and unescape if necessary
-                    uint8_t bytes_read = 0;
-                    
-                    while (bytes_read != data_length) {
-                        serial_buffer[bytes_read++] = read_unescaped_byte(ITF_SLIDER);
-                    }
-
-                    // Read the checksum
-                    uint8_t checksum = read_unescaped_byte(ITF_SLIDER);
-
-                    // Construct the request packet
-                    SliderPacket request;
-                    request.command_id = command_id;
-                    request.data = &serial_buffer[0];
-                    request.length = data_length;
-                    request.checksum = checksum;
-
-                    packet_in_progress = false;
-
-                    // Process the request packet. If a response needs to be sent,
-                    // SegaSlider itself handles the sending, escaping, and checksumming
-                    sega_slider->process_packet(request);
+        // There is at least 1 byte available, process it
+        while (next_byte != -1) {
+            if (sync == 0) {
+                // We haven't read the next packet begin yet
+                if (next_byte == PACKET_BEGIN) {
+                    sync = next_byte;
+                    next_byte = read_unescaped_slider_byte();
                 } else {
-                    packet_in_progress = true;
+                    next_byte = read_slider_byte();
                 }
+            } else if (command_id == 0) {
+                // We've read the SYNC byte, haven't read a command ID yet
+                command_id = next_byte;
+                next_byte = read_unescaped_slider_byte();
+            } else if (data_length == -1) {
+                // We've read the command ID, haven't read the data length yet
+                data_length = next_byte;
+                next_byte = read_unescaped_slider_byte();
+            } else if (bytes_read != data_length) {
+                // We're inside the body of a packet, read bytes until we've
+                // read them all
+                serial_buffer[bytes_read++] = next_byte;
+                next_byte = read_unescaped_slider_byte();
+            } else if (checksum == -1) {
+                // We've finished the packet body, read the checksum and then process
+                // the packet
+                checksum = next_byte;
+
+                // Construct the request packet
+                SliderPacket request;
+                request.command_id = command_id;
+                request.data = &serial_buffer[0];
+                request.length = data_length;
+                request.checksum = checksum;
+
+                // Process the request packet. If a response needs to be sent,
+                // SegaSlider itself handles the sending, escaping, and checksumming
+                sega_slider->process_packet(request);
+
+                // Reset the packet states for the next read
+                sync = 0;
+                command_id = 0;
+                data_length = -1;
+                bytes_read = 0;
+                checksum = -1;
+                next_byte = -1;
             }
         }
 
@@ -241,16 +264,49 @@ void main_core_1() {
 }
 
 /**
- * @brief Reads a byte from serial, and unescapes it if necessary.
- * @return uint8_t The next byte from serial, unescaped.
+ * @brief Reads a byte from the slider serial, and unescapes it if necessary.
+ * @return int The next byte from slider serial, unescaped (-1 if no data available)
  */
-uint8_t read_unescaped_byte(uint8_t itf) {
-    uint8_t val = tud_cdc_n_read_char(itf);
+int read_unescaped_slider_byte() {
+    int return_value = -1;
 
-    if (val != PACKET_ESCAPE) {
-        return val;
-    } else {
-        val = tud_cdc_n_read_char(itf);
-        return val + 1;
+    // Make sure any data is available
+    if (tud_cdc_n_available(ITF_SLIDER)) {
+        uint8_t val = tud_cdc_n_read_char(ITF_SLIDER);
+
+        // Possible outcomes after reading any given byte:
+        // The byte is not the escape byte:
+        //    * Check if the previous byte was the escape byte, and if so, add 1 to this byte,
+        //      return it and reset the flag
+        //    * If previous byte was also not escape byte, then return the value as-read
+        // The byte is the escape byte:
+        //    * Set the flag and then move onto the next byte
+        if (val != PACKET_ESCAPE) {
+            if (last_byte_escape) {
+                return_value = val + 1;
+                last_byte_escape = false;
+            } else {
+                return_value = val;
+            }
+        } else {
+            last_byte_escape = true;
+            return_value = read_unescaped_slider_byte();
+        }
     }
+
+    return return_value;
+}
+
+/**
+ * @brief Reads a byte from the slider serial without unescaping it
+ * @return int The next byte from slider serial, or -1 if no data is available
+ */
+int read_slider_byte() {
+    int return_value = -1;
+
+    if (tud_cdc_n_available(ITF_SLIDER)) {
+        return_value = tud_cdc_n_read_char(ITF_SLIDER);
+    }
+
+    return return_value;
 }
