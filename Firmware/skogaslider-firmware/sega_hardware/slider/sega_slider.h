@@ -34,7 +34,7 @@ class SegaSlider {
         TouchSlider* touch_slider;
         LedController* led_strip;
         uint8_t slider_response_data[32];
-        uint8_t hw_info_response_data[17];
+        uint8_t hw_info_response_data[18];
 
         uint8_t map_touch_to_byte(uint16_t value);
         SliderPacket generate_slider_report();
