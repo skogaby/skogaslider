@@ -17,7 +17,9 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
     slider_response_data { 0 },
     hw_info_response_data {
         0x31, 0x35, 0x33, 0x33, 0x30, 0x20, 0x20, 0x20,
-        0xA0, 0x30, 0x36, 0x37, 0x31, 0x32, 0xFF, 0x90
+        0xA0, 0x30, 0x36, 0x37, 0x31, 0x32, 0xFF, 0x90,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     }
 {
     // Packet to re-use for slider reports, the address for the data
@@ -30,11 +32,11 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
     // board and model information
     hw_info_packet.command_id = GET_HW_INFO;
     hw_info_packet.data = &hw_info_response_data[0];
-    hw_info_packet.length = 16;
+    hw_info_packet.length = 32;
 
     // Packet to re-use for responses whose bodies are empty. Set the
     // command ID as needed
-    empty_body_packet.command_id = NO_OP;
+    empty_body_packet.command_id = 0xFF;
     empty_body_packet.length = 0;
 }
 
@@ -56,25 +58,21 @@ uint8_t SegaSlider::map_touch_to_byte(uint16_t value) {
  * @param request The packet from the host
  * @return SliderPacket A response packet, or a  NO_OP packet.
  */
-SliderPacket SegaSlider::process_packet(SliderPacket request) {
+void SegaSlider::process_packet(SliderPacket request) {
     switch (request.command_id) {
         case SLIDER_REPORT:
-            return handle_slider_report();
+            send_packet(handle_slider_report());
         case LED_REPORT:
             handle_led_report(request);
         case ENABLE_SLIDER_REPORT:
             handle_enable_slider_report();
         case DISABLE_SLIDER_REPORT:
-            return handle_disable_slider_report();
+            send_packet(handle_disable_slider_report());
         case RESET:
-            return handle_reset();
+            send_packet(handle_reset());
         case GET_HW_INFO:
-            return handle_get_hw_info();
+            send_packet(handle_get_hw_info());
     }
-
-    // Anything that didn't explicitly return its own response should just return NO_OP
-    empty_body_packet.command_id = NO_OP;
-    return empty_body_packet;
 }
 
 /**
@@ -89,7 +87,7 @@ SliderPacket SegaSlider::generate_slider_report() {
     uint8_t response_index = 0;
 
 #ifdef FAKE_SLIDER_REPORT_VALUES
-    bool* touched_states = touch_slider->scan_touch_states();
+    bool* touched_states = touch_slider->states;
     
     for (int key = 15; key >= 0; key--) {
         for (int j = 0; j < 2; j++) {
@@ -102,7 +100,7 @@ SliderPacket SegaSlider::generate_slider_report() {
         }
     }
 #else
-    uint16_t* touch_values = touch_slider->scan_touch_readouts();
+    uint16_t* touch_values = touch_slider->touch_readouts;
 
     for (int key = 15; key >= 0; key--) {
         slider_response_data[response_index++] = map_touch_to_byte(touch_values[(key * 2)]);
@@ -158,7 +156,6 @@ void SegaSlider::handle_led_report(SliderPacket request) {
  * to the host from the slider (arcade does it roughly every 12ms).
  */
 void SegaSlider::handle_enable_slider_report() {
-    // This flag will be actually processed in a later revision
     auto_send_reports = true;
 }
 
@@ -192,16 +189,47 @@ SliderPacket SegaSlider::handle_get_hw_info() {
 }
 
 /**
- * @brief Calculate and return the checksum for a given packet
- * @param packet Packet to get the checksum for
- * @return uint8_t Checksum for the packet
+ * @brief Sends a packet to the host, escaping bytes and checksumming
+ * as it does so.
+ * @param packet The packet to send to the host
  */
-uint8_t SegaSlider::calculate_checksum(SliderPacket packet) {
-    uint8_t sum = packet.command_id + packet.length;
+void SegaSlider::send_packet(SliderPacket packet) {
+    uint8_t checksum = 0;
+
+    tud_cdc_n_write_char(ITF_SLIDER, PACKET_BEGIN);
+    checksum -= PACKET_BEGIN;
+
+    send_escaped_byte(packet.command_id);
+    checksum -= packet.command_id;
+
+    send_escaped_byte(packet.length);
+    checksum -= packet.length;
 
     for (int i = 0; i < packet.length; i++) {
-        sum += packet.data[i];
+        send_escaped_byte(packet.data[i]);
+        checksum -= (packet.data[i]);
     }
 
-    return ((sum - 0xFF) & 0xFF);
+    send_escaped_byte(checksum);
+}
+
+ /**
+  * @brief Sends a byte to the host, escaping it if necessary.
+  * @param byte The byte to send
+  */
+void SegaSlider::send_escaped_byte(uint8_t byte) {
+    if (byte == PACKET_BEGIN || byte == PACKET_ESCAPE) {
+        tud_cdc_n_write_char(ITF_SLIDER, PACKET_ESCAPE);
+        byte -= 1;
+    }
+    
+    tud_cdc_n_write_char(ITF_SLIDER, byte);
+}
+
+/**
+ * @brief Handles a request from the main processor to send a slider report
+ * packet to the host.
+ */
+void SegaSlider::send_slider_report() {
+    send_packet(generate_slider_report());
 }

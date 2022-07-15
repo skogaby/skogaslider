@@ -12,7 +12,7 @@
 #include "pico/multicore.h"
 
 #include "config.h"
-#include "sega_hardware/slider/protocol.h"
+#include "sega_hardware/slider/sega_slider.h"
 #include "leds/led_controller.h"
 #include "slider/touch_slider.h"
 #include "tinyusb/usb_descriptors.h"
@@ -25,18 +25,27 @@
  */
 #define LIGHTS_UPDATE_DIVISOR 4
 
+/**
+ * Uncomment this if you want to use keyboard output and reactive lights, instead of the arcade slider protocol. This will eventually
+ * be driven by a button press at runtime or something.
+ */
+// #define USE_KEYBOARD_OUTPUT
+
 /** Manages handling touch events and updating touch state */
 TouchSlider* touch_slider;
 /** Manages the LED strip and abstracts away LED indices from key and divider indices */
 LedController* led_strip;
 /** Handles sending keyboard outputs to the host computer */
 UsbOutput* usb_output;
+/** Handles packet processing for adhering to the SEGA slider protocol */
+SegaSlider* sega_slider;
 /** This keeps track of the touch states of the keys for reactive lighting updates (combines each key's sensors into one ORed state) */
 bool key_states[16] = { false };
-/** This flag indicates that the light state has been updated and the lights should be refreshed */
+/** This flag indicates that the light state has been updated and the lights should be refreshed (not for arcade protocol mode) */
 bool update_lights = false;
 
 void main_core_1();
+uint8_t read_unescaped_byte(uint8_t itf);
 
 /**
  * @brief Initializes the GPIO pins, sets up I2C, etc.
@@ -60,26 +69,40 @@ int main() {
 
     // Initialize inputs and outputs
     touch_slider = new TouchSlider();
-    led_strip = new LedController(50);
+    led_strip = new LedController(100);
     usb_output = new UsbOutput();
+    sega_slider = new SegaSlider(touch_slider, led_strip);
 
     // Launch the input code on the second core
     multicore_launch_core1(main_core_1);
 
-    // Keep track of the output rate and log it each second
+#ifdef USE_KEYBOARD_OUTPUT
+    // Keep track of the output rate and log it each second (only for keyboard mode)
     uint32_t time_now = to_ms_since_boot(get_absolute_time());
     uint32_t time_log = time_now + 1000;
     uint32_t output_count = 0;
     uint32_t lights_update_count = 0;
 
-    // Limit how often we update lights, relative to how often we send USB updates
+    // Limit how often we update lights in keyboard mode, relative to how often we send USB updates
     uint32_t lights_update_limiter = 0;
+#else
+    // Buffer to contain incoming serial packets
+    uint8_t serial_buffer[256] = { 0 };
+    // These help us track in-progress packet reads, where we've read the header
+    // but the data is not all available yet
+    uint8_t sync = 0;
+    uint8_t command_id = 0;
+    uint8_t data_length = 0;
+    bool packet_in_progress = false;
+
+#endif
 
     while (true) {
         // tinyusb device task, required to call this frequently since we're
         // not using a RTOS
         tud_task();
 
+#ifdef USE_KEYBOARD_OUTPUT
         // Check if the host is ready to receive another USB packet
         if (tud_hid_ready()) {
             // Send the keyboard updates
@@ -113,6 +136,55 @@ int main() {
             output_count = 0;
             lights_update_count = 0;
         }
+#else
+        // Check if there are any serial packets from the host, 4 bytes is the bare
+        // minimum for a packet (SYNC, COMMAND_ID, LENGTH, CHECKSUM)
+        if (tud_cdc_n_available(ITF_SLIDER) >= 4 || packet_in_progress) {
+            // Make sure we can read the packet successfully
+            if (!packet_in_progress) {
+                sync = tud_cdc_n_read_char(ITF_SLIDER);
+            }
+
+            if (sync == PACKET_BEGIN) {
+                if (!packet_in_progress) {
+                    command_id = read_unescaped_byte(ITF_SLIDER);
+                    data_length = read_unescaped_byte(ITF_SLIDER);
+                }
+
+                if (tud_cdc_n_available(ITF_SLIDER) >= data_length) {
+                    // Read data byte by byte and unescape if necessary
+                    uint8_t bytes_read = 0;
+                    
+                    while (bytes_read != data_length) {
+                        serial_buffer[bytes_read++] = read_unescaped_byte(ITF_SLIDER);
+                    }
+
+                    // Read the checksum
+                    uint8_t checksum = read_unescaped_byte(ITF_SLIDER);
+
+                    // Construct the request packet
+                    SliderPacket request;
+                    request.command_id = command_id;
+                    request.data = &serial_buffer[0];
+                    request.length = data_length;
+                    request.checksum = checksum;
+
+                    packet_in_progress = false;
+
+                    // Process the request packet. If a response needs to be sent,
+                    // SegaSlider itself handles the sending, escaping, and checksumming
+                    sega_slider->process_packet(request);
+                } else {
+                    packet_in_progress = true;
+                }
+            }
+        }
+
+        // Send a slider packet to the host, if auto-reporting is enabled
+        if (sega_slider->auto_send_reports) {
+            sega_slider->send_slider_report();
+        }
+#endif
     }
 
     return 0;
@@ -124,15 +196,18 @@ int main() {
  */
 void main_core_1() {
     // Keep track of the scan rate and log it each second
+#ifdef USE_KEYBOARD_OUTPUT
     uint32_t time_now = to_ms_since_boot(get_absolute_time());
     uint32_t time_log = time_now + 1000;
     uint32_t scan_count = 0;
+#endif
 
     // Infinite loop to read all the input data from various sources
     while (true) {
         // Scan the touch keys
         touch_slider->scan_touch_states();
 
+#ifdef USE_KEYBOARD_OUTPUT
         // Set the slider LEDs according to touch sensor states,
         // but let core 0 handle the actual call to *show* the lights
         for (int i = 0; i < 16; i++) {
@@ -161,5 +236,21 @@ void main_core_1() {
             time_log = time_now + 1000;
             scan_count = 0;
         }
+#endif
+    }
+}
+
+/**
+ * @brief Reads a byte from serial, and unescapes it if necessary.
+ * @return uint8_t The next byte from serial, unescaped.
+ */
+uint8_t read_unescaped_byte(uint8_t itf) {
+    uint8_t val = tud_cdc_n_read_char(itf);
+
+    if (val != PACKET_ESCAPE) {
+        return val;
+    } else {
+        val = tud_cdc_n_read_char(itf);
+        return val + 1;
     }
 }

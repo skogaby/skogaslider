@@ -31,12 +31,7 @@ enum SliderCommandId {
     /** Request from the host to reset the slider */
     RESET = 0x10,
     /** Request from the host to return the hardware information about the slider */
-    GET_HW_INFO = 0xF0,
-    /**
-     * Not an actual opcode, but this is used as a flag from the SegaSlider processPacket
-     * function to indicate that there's no actual response and no data needs to be sent.
-     */
-    NO_OP = 0xFF
+    GET_HW_INFO = 0xF0
 };
 
 /**
