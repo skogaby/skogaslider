@@ -18,10 +18,12 @@ class MPR121 {
     private:
         i2c_inst_t *i2c_port;
         uint8_t i2c_addr;
+        uint16_t electrode_data[12];
 
         void write_8(uint8_t reg, uint8_t val);
         uint8_t read_8(uint8_t reg);
         uint16_t read_16(uint8_t reg);
+        uint8_t* read_bytes(uint8_t reg, size_t length);
 
     public:
         MPR121();
@@ -32,4 +34,5 @@ class MPR121 {
         uint8_t baseline_data(uint8_t electrode);
         uint16_t get_all_touched();
         bool is_electrode_touched(uint8_t electrode);
+        uint16_t* get_all_electrode_values();
 };

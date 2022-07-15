@@ -21,9 +21,12 @@ TouchSlider::TouchSlider():
 }
 
 /**
- * @brief Does a scan across all the MPR121s and updates the internal states of each key.
+ * @brief Does a scan across all the MPR121s and updates the internal boolean touch state of each sensor,
+ * primarily used for keyboard mode, since we don't manually calculate thresholds and leave it to the
+ * MPR121 in that mode.
+ * @return bool* The boolean touch state of each sensor
  */
-void TouchSlider::scan_keys() {
+bool* TouchSlider::scan_touch_states() {
     uint8_t curr_state_index = 0;
 
     // Loop over the 3 MPR121s and read every key
@@ -44,6 +47,37 @@ void TouchSlider::scan_keys() {
             states[curr_state_index++] = bit_read(touched, i);
         }
     }
+
+    return states;
+}
+
+/**
+ * @brief Does a scan across all the MPR121s and updates the internal uint16_t touch values for each key.
+ * @return uint16_t* The touch readout values of each of the 32 sensors.
+ */
+uint16_t* TouchSlider::scan_touch_readouts() {
+    uint8_t curr_state_index = 0;
+
+    // Loop over the 3 MPR121s and read every key
+    for (uint8_t sensor_index = 0; sensor_index < 3; sensor_index++) {
+        MPR121 mpr121 = touch_sensors[sensor_index];
+        uint16_t* touch_values = mpr121.get_all_electrode_values();
+        uint8_t lower_bound;
+        
+        // The 3rd MPR121 only contains 8 keys, so we make sure not to read the first 4 electrodes
+        // on this sensor
+        if (sensor_index == 2) {
+            lower_bound = 4;
+        } else {
+            lower_bound = 0;
+        }
+
+        for (int i = 11; i >= lower_bound; i--) {
+            touch_readouts[curr_state_index++] = touch_values[i];
+        }
+    }
+
+    return touch_readouts;
 }
 
 /**

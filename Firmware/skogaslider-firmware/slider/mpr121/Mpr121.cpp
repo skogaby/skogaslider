@@ -83,6 +83,19 @@ uint16_t MPR121::read_16(uint8_t reg) {
 }
 
 /**
+ * @brief Reads a specified number of bytes from the given register.
+ * @param reg The register to read from
+ * @param length The number of bytes to read
+ * @return uint8_t* The bytes read from the register
+ */
+uint8_t* MPR121::read_bytes(uint8_t reg, size_t length) {
+    uint8_t* vals = new uint8_t[length]();
+    i2c_write_blocking(this->i2c_port, this->i2c_addr, &reg, 1, true);
+    i2c_read_blocking(this->i2c_port, this->i2c_addr, vals, length, false);
+    return vals;
+}
+
+/**
  * @brief Resets the state of the MPR121 sensor.
  */
 void MPR121::reset() {
@@ -196,4 +209,21 @@ uint16_t MPR121::get_all_touched() {
 bool MPR121::is_electrode_touched(uint8_t electrode) {
     uint16_t t = get_all_touched();
     return (t & (1 << electrode)) != 0;
+}
+
+/**
+ * @brief Gets all the electrode filtered data for every sensor and returns it as
+ * a uint16_t array of size 12.
+ * @return uint16_t* The electrode values
+ */
+uint16_t* MPR121::get_all_electrode_values() {
+    uint8_t* raw_values = read_bytes(MPR121_ELECTRODE_FILTERED_DATA, 24);
+
+    for (uint8_t i = 0; i < 12; i++) {
+        // Read each pair of bytes as a single 10-bit value (mask off all but the 2 LSBs of the 2nd byte)
+        electrode_data[i] = raw_values[i * 2] | ((raw_values[(i * 2) + 1] & 0b00000011) << 8);
+    }
+
+    delete[] raw_values;
+    return electrode_data;
 }

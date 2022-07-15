@@ -27,7 +27,10 @@ class TouchSlider {
 
     public:
         bool states[32];
+        uint16_t touch_readouts[32];
+
         TouchSlider();
-        void scan_keys();
+        bool* scan_touch_states();
+        uint16_t* scan_touch_readouts();
         bool is_key_pressed(uint8_t key);
 };

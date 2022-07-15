@@ -12,6 +12,7 @@
 #include "pico/multicore.h"
 
 #include "config.h"
+#include "sega_hardware/slider/protocol.h"
 #include "leds/led_controller.h"
 #include "slider/touch_slider.h"
 #include "tinyusb/usb_descriptors.h"
@@ -130,7 +131,7 @@ void main_core_1() {
     // Infinite loop to read all the input data from various sources
     while (true) {
         // Scan the touch keys
-        touch_slider->scan_keys();
+        touch_slider->scan_touch_states();
 
         // Set the slider LEDs according to touch sensor states,
         // but let core 0 handle the actual call to *show* the lights
