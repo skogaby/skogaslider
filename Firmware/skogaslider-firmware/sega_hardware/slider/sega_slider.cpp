@@ -130,10 +130,7 @@ SliderPacket SegaSlider::handle_slider_report() {
  * @param request A SliderPacket that contains an LED update report
  */
 void SegaSlider::handle_led_report(SliderPacket request) {
-    // The max brightness according to the protocol is 63, map that from 6 bits
-    // to 8 bits and set the LED brightness
-    uint8_t brightness = (request.data[0] / 0x3F) * 0xFF;
-    led_strip->set_brightness(brightness);
+    led_strip->set_brightness(request.data[0]);
 
     // The index for the LEDs starts at the right-hand side on the last key
     // in the LED reports, and the order of the bytes is BRG

@@ -216,7 +216,7 @@ int main() {
 
         // Log the current output rate once per second
         if (time_now > time_log) {
-            printf("[Core 0] Output rate: %i Hz | Lights update rate: %i Hz\n",
+            printf("[Core 0] Output rate: %i Hz\n",
                 output_count, lights_update_count);
             time_log = time_now + 1000;
             output_count = 0;
@@ -233,11 +233,9 @@ int main() {
  */
 void main_core_1() {
     // Keep track of the scan rate and log it each second
-#ifdef USE_KEYBOARD_OUTPUT
     uint32_t time_now = to_ms_since_boot(get_absolute_time());
     uint32_t time_log = time_now + 1000;
     uint32_t scan_count = 0;
-#endif
 
     // Infinite loop to read all the input data from various sources
     while (true) {
@@ -262,6 +260,7 @@ void main_core_1() {
 
             key_states[i] = key_pressed;
         }
+#endif
 
         scan_count++;
 
@@ -273,7 +272,6 @@ void main_core_1() {
             time_log = time_now + 1000;
             scan_count = 0;
         }
-#endif
     }
 }
 
