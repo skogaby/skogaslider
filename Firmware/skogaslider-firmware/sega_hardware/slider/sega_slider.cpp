@@ -61,16 +61,22 @@ void SegaSlider::process_packet(SliderPacket request) {
     switch (request.command_id) {
         case SLIDER_REPORT:
             send_packet(handle_slider_report());
+            break;
         case LED_REPORT:
             handle_led_report(request);
+            break;
         case ENABLE_SLIDER_REPORT:
             handle_enable_slider_report();
+            break;
         case DISABLE_SLIDER_REPORT:
             send_packet(handle_disable_slider_report());
+            break;
         case RESET:
             send_packet(handle_reset());
+            break;
         case GET_HW_INFO:
             send_packet(handle_get_hw_info());
+            break;
     }
 }
 
@@ -135,9 +141,9 @@ void SegaSlider::handle_led_report(SliderPacket request) {
     uint8_t divider_index = 14;
 
     for (uint8_t i = 0; i < 32; i++) {
-        uint8_t blue = request.data[(i *  3)];
-        uint8_t red = request.data[(i *  3) + 1];
-        uint8_t green = request.data[(i *  3) + 2];
+        uint8_t blue = request.data[(i *  3) + 1];
+        uint8_t red = request.data[(i *  3) + 2];
+        uint8_t green = request.data[(i *  3) + 3];
 
         // Alternate between the keys and dividers
         if (i % 2 == 0) {
@@ -210,6 +216,8 @@ void SegaSlider::send_packet(SliderPacket packet) {
     }
 
     send_escaped_byte(checksum);
+
+    tud_cdc_n_write_flush(ITF_SLIDER);
 }
 
  /**

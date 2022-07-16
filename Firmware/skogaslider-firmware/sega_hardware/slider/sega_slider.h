@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdio.h>
 #include "tusb.h"
 #include "protocol.h"
 #include "../../slider/touch_slider.h"
@@ -18,7 +19,7 @@
 #define FAKE_SLIDER_REPORT_VALUES
 
 // This is the ITF ID to use when sending or receiving slider packets from the host
-#define ITF_SLIDER 0
+#define ITF_SLIDER 1
 
 /**
  * @brief Class that implements the SEGA slider's request and response protocol.

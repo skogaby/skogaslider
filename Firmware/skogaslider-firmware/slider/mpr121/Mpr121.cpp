@@ -33,7 +33,7 @@ const uint8_t MPR121_SOFT_RESET = 0x80;
 /**
  * @brief Construct a new MPR121::MPR121 object with the default values, no reset.
  */
-MPR121::MPR121() {
+MPR121::MPR121(): byte_buffer { 0 } {
     this->i2c_port = i2c0;
     this->i2c_addr = 0x5A;
 }
@@ -42,7 +42,7 @@ MPR121::MPR121() {
  * @brief Construct a new MPR121::MPR121 object and reset it to its default state.
  * @param i2c_addr The address to use for I2C communication for this sensor
  */
-MPR121::MPR121(i2c_inst_t *i2c_port, uint8_t i2c_addr) {
+MPR121::MPR121(i2c_inst_t *i2c_port, uint8_t i2c_addr): byte_buffer { 0 } {
     this->i2c_port = i2c_port;
     this->i2c_addr = i2c_addr;
     reset();
@@ -89,10 +89,9 @@ uint16_t MPR121::read_16(uint8_t reg) {
  * @return uint8_t* The bytes read from the register
  */
 uint8_t* MPR121::read_bytes(uint8_t reg, size_t length) {
-    uint8_t* vals = new uint8_t[length]();
     i2c_write_blocking(this->i2c_port, this->i2c_addr, &reg, 1, true);
-    i2c_read_blocking(this->i2c_port, this->i2c_addr, vals, length, false);
-    return vals;
+    i2c_read_blocking(this->i2c_port, this->i2c_addr, &byte_buffer[0], length, false);
+    return &byte_buffer[0];
 }
 
 /**
@@ -224,6 +223,5 @@ uint16_t* MPR121::get_all_electrode_values() {
         electrode_data[i] = raw_values[i * 2] | ((raw_values[(i * 2) + 1] & 0b00000011) << 8);
     }
 
-    delete[] raw_values;
     return electrode_data;
 }

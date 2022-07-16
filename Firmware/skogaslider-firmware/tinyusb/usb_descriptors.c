@@ -47,9 +47,9 @@ tusb_desc_device_t const desc_device_key = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB = 0x0200,
-    .bDeviceClass = 0x00,
-    .bDeviceSubClass = 0x00,
-    .bDeviceProtocol = 0x00,
+    .bDeviceClass = TUSB_CLASS_MISC,
+    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor = 0x1337,
     .idProduct = USB_PID,
@@ -70,8 +70,7 @@ uint8_t const* tud_descriptor_device_cb(void) {
 // HID Report Descriptor
 //--------------------------------------------------------------------+
 uint8_t const desc_hid_report_key[] = {
-    GAMECON_REPORT_DESC_NKRO(HID_REPORT_ID(REPORT_ID_KEYBOARD)),
-    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(REPORT_ID_MOUSE))
+    GAMECON_REPORT_DESC_NKRO(HID_REPORT_ID(REPORT_ID_KEYBOARD))
 };
 
 // Invoked when received GET HID REPORT DESCRIPTOR
@@ -86,20 +85,28 @@ uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-enum {
-	ITF_NUM_HID,
-	ITF_NUM_CDC,
-	ITF_NUM_CDC_DATA,
-	ITF_NUM_TOTAL
+enum
+{
+	ITF_NUM_HID = 0,
+  ITF_NUM_CDC_0,
+  ITF_NUM_CDC_0_DATA,
+  ITF_NUM_CDC_1,
+  ITF_NUM_CDC_1_DATA,
+  ITF_NUM_TOTAL
 };
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_CDC_DESC_LEN)
+// #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_CDC_DESC_LEN)
+#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
 
-#define EPNUM_HID 0x84
+#define EPNUM_HID 0x85
 
-#define EPNUM_CDC_NOTIF 0x81
-#define EPNUM_CDC_OUT   0x02
-#define EPNUM_CDC_IN    0x82
+#define EPNUM_CDC_0_NOTIF   0x81
+#define EPNUM_CDC_0_OUT     0x02
+#define EPNUM_CDC_0_IN      0x82
+
+#define EPNUM_CDC_1_NOTIF   0x83
+#define EPNUM_CDC_1_OUT     0x04
+#define EPNUM_CDC_1_IN      0x84
 
 uint8_t const desc_configuration_key[] = {
     // Config number, interface count, string index, total length, attribute,
@@ -107,16 +114,21 @@ uint8_t const desc_configuration_key[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN,
                           TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
 
-    // Interface number, string index, protocol, report descriptor len, EP In
+    // HID: Interface number, string index, protocol, report descriptor len, EP In
     // address, size & polling interval
     TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE,
                        sizeof(desc_hid_report_key), EPNUM_HID,
                        CFG_TUD_HID_EP_BUFSIZE, 1),
     
-    // Interface number, string index, EP notification address and size,
+    // CDC 0: Interface number, string index, EP notification address and size,
     // EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8,
-                       EPNUM_CDC_OUT, EPNUM_CDC_IN, 64)
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8,
+                       EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
+    
+    // CDC 1: Interface number, string index, EP notification address and size,
+    // EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8,
+                       EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64)
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR

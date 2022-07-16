@@ -19,6 +19,7 @@ class MPR121 {
         i2c_inst_t *i2c_port;
         uint8_t i2c_addr;
         uint16_t electrode_data[12];
+        uint8_t byte_buffer[32];
 
         void write_8(uint8_t reg, uint8_t val);
         uint8_t read_8(uint8_t reg);

@@ -79,13 +79,13 @@ int main() {
     // Launch the input code on the second core
     multicore_launch_core1(main_core_1);
 
-#ifdef USE_KEYBOARD_OUTPUT
-    // Keep track of the output rate and log it each second (only for keyboard mode)
+    // Keep track of the output rate and log it each second
     uint32_t time_now = to_ms_since_boot(get_absolute_time());
     uint32_t time_log = time_now + 1000;
     uint32_t output_count = 0;
     uint32_t lights_update_count = 0;
 
+#ifdef USE_KEYBOARD_OUTPUT
     // Limit how often we update lights in keyboard mode, relative to how often we send USB updates
     uint32_t lights_update_limiter = 0;
 #else
@@ -98,6 +98,7 @@ int main() {
     int bytes_read = 0;
     int checksum = -1;
     int next_byte = -1;
+    bool packet_in_progress = false;
 
 #endif
 
@@ -129,17 +130,6 @@ int main() {
 
             output_count++;
         }
-
-        // Log the current keyboard output rate once per second
-        time_now = to_ms_since_boot(get_absolute_time());
-
-        if (time_now > time_log) {
-            printf("[Core 0] Keyboard output rate: %i Hz | Lights update rate: %i Hz\n",
-                output_count, lights_update_count);
-            time_log = time_now + 1000;
-            output_count = 0;
-            lights_update_count = 0;
-        }
 #else
         // Check if any serial packets are available. Since we can't make any timing
         // guarantees about when we'll read and process data relative to when each byte
@@ -159,6 +149,7 @@ int main() {
             if (sync == 0) {
                 // We haven't read the next packet begin yet
                 if (next_byte == PACKET_BEGIN) {
+                    packet_in_progress = true;
                     sync = next_byte;
                     next_byte = read_unescaped_slider_byte();
                 } else {
@@ -189,6 +180,8 @@ int main() {
                 request.length = data_length;
                 request.checksum = checksum;
 
+                // printf("Received packet, command ID 0x%X, data length %d\n", command_id, data_length);
+
                 // Process the request packet. If a response needs to be sent,
                 // SegaSlider itself handles the sending, escaping, and checksumming
                 sega_slider->process_packet(request);
@@ -200,14 +193,26 @@ int main() {
                 bytes_read = 0;
                 checksum = -1;
                 next_byte = -1;
+                packet_in_progress = false;
             }
         }
 
         // Send a slider packet to the host, if auto-reporting is enabled
-        if (sega_slider->auto_send_reports) {
+        if (!packet_in_progress && sega_slider->auto_send_reports) {
             sega_slider->send_slider_report();
+            output_count++;
         }
 #endif
+        // Log the current output rate once per second
+        time_now = to_ms_since_boot(get_absolute_time());
+
+        if (time_now > time_log) {
+            printf("[Core 0] Output rate: %i Hz | Lights update rate: %i Hz\n",
+                output_count, lights_update_count);
+            time_log = time_now + 1000;
+            output_count = 0;
+            lights_update_count = 0;
+        }
     }
 
     return 0;
