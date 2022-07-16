@@ -26,6 +26,11 @@
 #define LIGHTS_UPDATE_DIVISOR 4
 
 /**
+ * How many milliseconds to wait in between slider reports
+ */
+#define SLIDER_REPORT_DELAY 4
+
+/**
  * Uncomment this if you want to use keyboard output and reactive lights, instead of the arcade slider protocol. This will eventually
  * be driven by a button press at runtime or something.
  */
@@ -47,8 +52,8 @@ bool update_lights = false;
 bool last_byte_escape = false;
 
 void main_core_1();
-int read_unescaped_slider_byte();
-int read_slider_byte();
+int read_unescaped_serial_byte(uint8_t itf);
+int read_serial_byte(uint8_t itf);
 
 /**
  * @brief Initializes the GPIO pins, sets up I2C, etc.
@@ -89,6 +94,8 @@ int main() {
     // Limit how often we update lights in keyboard mode, relative to how often we send USB updates
     uint32_t lights_update_limiter = 0;
 #else
+    // Make sure auto-scan only reports every X number of milliseconds
+    uint32_t time_send_report = time_now + SLIDER_REPORT_DELAY;
     // Buffer to contain incoming serial packets
     uint8_t serial_buffer[256] = { 0 };
     // These help us track in-progress packet reads
@@ -130,6 +137,8 @@ int main() {
 
             output_count++;
         }
+
+        time_now = to_ms_since_boot(get_absolute_time());
 #else
         // Check if any serial packets are available. Since we can't make any timing
         // guarantees about when we'll read and process data relative to when each byte
@@ -139,9 +148,9 @@ int main() {
 
         // If we're at the beginning of a packet, we need to read bytes without unescaping
         if (sync == 0) {
-            next_byte = read_slider_byte();
+            next_byte = read_serial_byte(ITF_SLIDER);
         } else {
-            next_byte = read_unescaped_slider_byte();
+            next_byte = read_unescaped_serial_byte(ITF_SLIDER);
         }
 
         // There is at least 1 byte available, process it
@@ -151,23 +160,23 @@ int main() {
                 if (next_byte == PACKET_BEGIN) {
                     packet_in_progress = true;
                     sync = next_byte;
-                    next_byte = read_unescaped_slider_byte();
+                    next_byte = read_unescaped_serial_byte(ITF_SLIDER);
                 } else {
-                    next_byte = read_slider_byte();
+                    next_byte = read_serial_byte(ITF_SLIDER);
                 }
             } else if (command_id == 0) {
                 // We've read the SYNC byte, haven't read a command ID yet
                 command_id = next_byte;
-                next_byte = read_unescaped_slider_byte();
+                next_byte = read_unescaped_serial_byte(ITF_SLIDER);
             } else if (data_length == -1) {
                 // We've read the command ID, haven't read the data length yet
                 data_length = next_byte;
-                next_byte = read_unescaped_slider_byte();
+                next_byte = read_unescaped_serial_byte(ITF_SLIDER);
             } else if (bytes_read != data_length) {
                 // We're inside the body of a packet, read bytes until we've
                 // read them all
                 serial_buffer[bytes_read++] = next_byte;
-                next_byte = read_unescaped_slider_byte();
+                next_byte = read_unescaped_serial_byte(ITF_SLIDER);
             } else if (checksum == -1) {
                 // We've finished the packet body, read the checksum and then process
                 // the packet
@@ -179,8 +188,6 @@ int main() {
                 request.data = &serial_buffer[0];
                 request.length = data_length;
                 request.checksum = checksum;
-
-                // printf("Received packet, command ID 0x%X, data length %d\n", command_id, data_length);
 
                 // Process the request packet. If a response needs to be sent,
                 // SegaSlider itself handles the sending, escaping, and checksumming
@@ -197,15 +204,17 @@ int main() {
             }
         }
 
-        // Send a slider packet to the host, if auto-reporting is enabled
-        if (!packet_in_progress && sega_slider->auto_send_reports) {
-            sega_slider->send_slider_report();
-            output_count++;
-        }
-#endif
-        // Log the current output rate once per second
         time_now = to_ms_since_boot(get_absolute_time());
 
+        // Send a slider packet to the host, if auto-reporting is enabled, every X ms
+        if (!packet_in_progress && sega_slider->auto_send_reports && time_now >= time_send_report) {
+            sega_slider->send_slider_report();
+            output_count++;
+            time_send_report = time_now + SLIDER_REPORT_DELAY;
+        }
+#endif
+
+        // Log the current output rate once per second
         if (time_now > time_log) {
             printf("[Core 0] Output rate: %i Hz | Lights update rate: %i Hz\n",
                 output_count, lights_update_count);
@@ -272,12 +281,12 @@ void main_core_1() {
  * @brief Reads a byte from the slider serial, and unescapes it if necessary.
  * @return int The next byte from slider serial, unescaped (-1 if no data available)
  */
-int read_unescaped_slider_byte() {
+int read_unescaped_serial_byte(uint8_t itf) {
     int return_value = -1;
 
     // Make sure any data is available
-    if (tud_cdc_n_available(ITF_SLIDER)) {
-        uint8_t val = tud_cdc_n_read_char(ITF_SLIDER);
+    if (tud_cdc_n_available(itf)) {
+        uint8_t val = tud_cdc_n_read_char(itf);
 
         // Possible outcomes after reading any given byte:
         // The byte is not the escape byte:
@@ -295,7 +304,7 @@ int read_unescaped_slider_byte() {
             }
         } else {
             last_byte_escape = true;
-            return_value = read_unescaped_slider_byte();
+            return_value = read_unescaped_serial_byte(itf);
         }
     }
 
@@ -306,11 +315,11 @@ int read_unescaped_slider_byte() {
  * @brief Reads a byte from the slider serial without unescaping it
  * @return int The next byte from slider serial, or -1 if no data is available
  */
-int read_slider_byte() {
+int read_serial_byte(uint8_t itf) {
     int return_value = -1;
 
-    if (tud_cdc_n_available(ITF_SLIDER)) {
-        return_value = tud_cdc_n_read_char(ITF_SLIDER);
+    if (tud_cdc_n_available(itf)) {
+        return_value = tud_cdc_n_read_char(itf);
     }
 
     return return_value;
