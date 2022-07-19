@@ -36,7 +36,9 @@ target_link_libraries(skogaslider-firmware
 
 target_sources(skogaslider-firmware PRIVATE
         leds/led_controller.cpp
+        sega_hardware/led_board/sega_led_board.cpp
         sega_hardware/slider/sega_slider.cpp
+        sega_hardware/serial/sega_serial_reader.cpp
         slider/touch_slider.cpp
         slider/mpr121/mpr121.cpp
         tinyusb/usb_descriptors.c

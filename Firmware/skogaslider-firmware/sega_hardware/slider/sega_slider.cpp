@@ -41,13 +41,9 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
 
 /**
  * @brief Maps a 10-bit touch value to a uint8_t value.
- * @param value 
- * @return uint8_t 
  */
 uint8_t SegaSlider::map_touch_to_byte(uint16_t value) {
-    // Maps from (0-1024) to (0-252) so we don't have to
-    // worry about escaping bytes on the way out, and 252
-    // is still high enough to trigger a press in-game
+    // Maps from (0-1024) to (0-255)
     return (value / 0x400) * (0xFC);
 }
 
@@ -57,8 +53,8 @@ uint8_t SegaSlider::map_touch_to_byte(uint16_t value) {
  * @param request The packet from the host
  * @return SliderPacket A response packet, or a  NO_OP packet.
  */
-void SegaSlider::process_packet(SliderPacket request) {
-    switch (request.command_id) {
+void SegaSlider::process_packet(SliderPacket* request) {
+    switch (request->command_id) {
         case SLIDER_REPORT:
             send_packet(handle_slider_report());
             break;
@@ -71,7 +67,8 @@ void SegaSlider::process_packet(SliderPacket request) {
         case DISABLE_SLIDER_REPORT:
             send_packet(handle_disable_slider_report());
             break;
-        case RESET:
+        case SLIDER_RESET:
+            printf("Received a reset request\n");
             send_packet(handle_reset());
             break;
         case GET_HW_INFO:
@@ -85,7 +82,7 @@ void SegaSlider::process_packet(SliderPacket request) {
  * data, as well as during auto-scan mode.
  * @return SliderPacket A slider report packet containing all sensor readouts
  */
-SliderPacket SegaSlider::generate_slider_report() {
+SliderPacket* SegaSlider::generate_slider_report() {
     // Re-order the touch states into the right format. Internally, we store them with sensor 0 in the
     // top-left position on the slider, but Sega has it in the top-right position, meaning we can't
     // do a simple reversal here. Also, we need to map the 10-bit touch values into 8-bit values.
@@ -113,24 +110,24 @@ SliderPacket SegaSlider::generate_slider_report() {
     }
 #endif
 
-    return slider_report_packet;
+    return &slider_report_packet;
 }
 
 /**
  * @brief Handles a request for a one-off slider report.
  * @return SliderPacket A slider report packet containing all sensor readouts
  */
-SliderPacket SegaSlider::handle_slider_report() {
+SliderPacket* SegaSlider::handle_slider_report() {
     generate_slider_report();
-    return slider_report_packet;
+    return &slider_report_packet;
 }
 
 /**
  * @brief Handles a packet from the host to update the LEDs on the slider
  * @param request A SliderPacket that contains an LED update report
  */
-void SegaSlider::handle_led_report(SliderPacket request) {
-    led_strip->set_brightness(request.data[0]);
+void SegaSlider::handle_led_report(SliderPacket* request) {
+    led_strip->set_brightness(request->data[0]);
 
     // The index for the LEDs starts at the right-hand side on the last key
     // in the LED reports, and the order of the bytes is BRG
@@ -138,9 +135,9 @@ void SegaSlider::handle_led_report(SliderPacket request) {
     uint8_t divider_index = 14;
 
     for (uint8_t i = 0; i < 32; i++) {
-        uint8_t blue = request.data[(i *  3) + 1];
-        uint8_t red = request.data[(i *  3) + 2];
-        uint8_t green = request.data[(i *  3) + 3];
+        uint8_t blue = request->data[(i *  3) + 1];
+        uint8_t red = request->data[(i *  3) + 2];
+        uint8_t green = request->data[(i *  3) + 3];
 
         // Alternate between the keys and dividers
         if (i % 2 == 0) {
@@ -165,11 +162,11 @@ void SegaSlider::handle_enable_slider_report() {
  * @brief Handles a request to disable automatic slider reports to the host.
  * @return SliderPacket An ACK response.
  */
-SliderPacket SegaSlider::handle_disable_slider_report() {
+SliderPacket* SegaSlider::handle_disable_slider_report() {
     auto_send_reports = false;
 
     empty_body_packet.command_id = DISABLE_SLIDER_REPORT;
-    return empty_body_packet;
+    return &empty_body_packet;
 }
 
 /**
@@ -177,17 +174,17 @@ SliderPacket SegaSlider::handle_disable_slider_report() {
  * it later if needed.
  * @return SliderPacket An ACK response.
  */
-SliderPacket SegaSlider::handle_reset() {
-    empty_body_packet.command_id = RESET;
-    return empty_body_packet;
+SliderPacket* SegaSlider::handle_reset() {
+    empty_body_packet.command_id = SLIDER_RESET;
+    return &empty_body_packet;
 }
 
 /**
  * @brief Handles a request to get the hardware info from the slider.
  * @return SliderPacket A packet containing board info
  */
-SliderPacket SegaSlider::handle_get_hw_info() {
-    return hw_info_packet;
+SliderPacket* SegaSlider::handle_get_hw_info() {
+    return &hw_info_packet;
 }
 
 /**
@@ -195,21 +192,21 @@ SliderPacket SegaSlider::handle_get_hw_info() {
  * as it does so.
  * @param packet The packet to send to the host
  */
-void SegaSlider::send_packet(SliderPacket packet) {
+void SegaSlider::send_packet(SliderPacket* packet) {
     uint8_t checksum = 0;
 
-    tud_cdc_n_write_char(ITF_SLIDER, PACKET_BEGIN);
-    checksum -= PACKET_BEGIN;
+    tud_cdc_n_write_char(ITF_SLIDER, SLIDER_PACKET_BEGIN);
+    checksum -= SLIDER_PACKET_BEGIN;
 
-    send_escaped_byte(packet.command_id);
-    checksum -= packet.command_id;
+    send_escaped_byte(packet->command_id);
+    checksum -= packet->command_id;
 
-    send_escaped_byte(packet.length);
-    checksum -= packet.length;
+    send_escaped_byte(packet->length);
+    checksum -= packet->length;
 
-    for (int i = 0; i < packet.length; i++) {
-        send_escaped_byte(packet.data[i]);
-        checksum -= (packet.data[i]);
+    for (int i = 0; i < packet->length; i++) {
+        send_escaped_byte(packet->data[i]);
+        checksum -= (packet->data[i]);
     }
 
     send_escaped_byte(checksum);
@@ -222,8 +219,8 @@ void SegaSlider::send_packet(SliderPacket packet) {
   * @param byte The byte to send
   */
 void SegaSlider::send_escaped_byte(uint8_t byte) {
-    if (byte == PACKET_BEGIN || byte == PACKET_ESCAPE) {
-        tud_cdc_n_write_char(ITF_SLIDER, PACKET_ESCAPE);
+    if (byte == SLIDER_PACKET_BEGIN || byte == SLIDER_PACKET_ESCAPE) {
+        tud_cdc_n_write_char(ITF_SLIDER, SLIDER_PACKET_ESCAPE);
         byte -= 1;
     }
     

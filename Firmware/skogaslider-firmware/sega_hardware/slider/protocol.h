@@ -12,9 +12,9 @@
 #include "pico.h"
 
 /** First byte of every packet sent to and from the slider to the host application */
-#define PACKET_BEGIN 0xFF
+#define SLIDER_PACKET_BEGIN 0xFF
 /** Byte used to escape any reserved bytes in a packet */
-#define PACKET_ESCAPE 0xFD
+#define SLIDER_PACKET_ESCAPE 0xFD
 
 /**
  * @brief This is an enumeration of the command IDs we care to implement for the purposes of slider emulation.
@@ -29,7 +29,7 @@ enum SliderCommandId {
     /** Request from the host to disable automatic slider reports */
     DISABLE_SLIDER_REPORT = 0x04,
     /** Request from the host to reset the slider */
-    RESET = 0x10,
+    SLIDER_RESET = 0x10,
     /** Request from the host to return the hardware information about the slider */
     GET_HW_INFO = 0xF0
 };
