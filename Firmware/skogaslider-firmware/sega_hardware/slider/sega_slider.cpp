@@ -43,7 +43,7 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
  * @brief Maps a 10-bit touch value to a uint8_t value.
  */
 uint8_t SegaSlider::map_touch_to_byte(uint16_t value) {
-    // Maps from (0-1024) to (0-255)
+    // Maps from (0-1024) to (0-252)
     return (value / 0x400) * (0xFC);
 }
 

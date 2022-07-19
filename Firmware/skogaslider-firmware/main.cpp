@@ -32,6 +32,9 @@
 /** How many milliseconds to wait between logging input and output rates */
 #define LOG_DELAY 1000
 
+/** How many milliseconds since the last serial packet to wait before disabling auto-touch reports */
+#define AC_SLIDER_TIMEOUT 5000
+
 /**
  * Uncomment this if you want to use keyboard output and reactive lights, instead of the arcade slider protocol. This will eventually
  * be driven by a button press at runtime or something, but arcade protocol is the default behavior for now.
@@ -99,6 +102,7 @@ int main() {
 #else
     // Limit how often we send slider touch reports in AC protocol emulation mode
     uint32_t time_send_report = time_now + SLIDER_REPORT_DELAY;
+    uint32_t time_last_serial_packet = time_now;
 #endif
 
     while (true) {
@@ -135,7 +139,14 @@ int main() {
 #else // USE_KEYBOARD_OUTPUT
         // Check if any serial packets are available for the slider, and process them if so
         if (sega_serial->read_slider_packet(&slider_request)) {
+            time_last_serial_packet = time_now;
             sega_slider->process_packet(&slider_request);
+        }
+
+        // Disable auto-reporting after a configured amount of time without
+        // any serial packets being sent
+        if (time_now >= time_last_serial_packet + AC_SLIDER_TIMEOUT) {
+            sega_slider->auto_send_reports = false;
         }
 
         time_now = to_ms_since_boot(get_absolute_time());
