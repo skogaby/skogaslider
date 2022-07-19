@@ -92,13 +92,17 @@ enum
   ITF_NUM_CDC_0_DATA,
   ITF_NUM_CDC_1,
   ITF_NUM_CDC_1_DATA,
+  ITF_NUM_CDC_2,
+  ITF_NUM_CDC_2_DATA,
+  ITF_NUM_CDC_3,
+  ITF_NUM_CDC_3_DATA,
   ITF_NUM_TOTAL
 };
 
 // #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_CDC_DESC_LEN)
 #define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
 
-#define EPNUM_HID 0x85
+#define EPNUM_HID 0x89
 
 #define EPNUM_CDC_0_NOTIF   0x81
 #define EPNUM_CDC_0_OUT     0x02
@@ -107,6 +111,14 @@ enum
 #define EPNUM_CDC_1_NOTIF   0x83
 #define EPNUM_CDC_1_OUT     0x04
 #define EPNUM_CDC_1_IN      0x84
+
+#define EPNUM_CDC_2_NOTIF   0x85
+#define EPNUM_CDC_2_OUT     0x06
+#define EPNUM_CDC_2_IN      0x86
+
+#define EPNUM_CDC_3_NOTIF   0x87
+#define EPNUM_CDC_3_OUT     0x08
+#define EPNUM_CDC_3_IN      0x88
 
 uint8_t const desc_configuration_key[] = {
     // Config number, interface count, string index, total length, attribute,
@@ -128,7 +140,17 @@ uint8_t const desc_configuration_key[] = {
     // CDC 1: Interface number, string index, EP notification address and size,
     // EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8,
-                       EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64)
+                       EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+    
+    // CDC 2: Interface number, string index, EP notification address and size,
+    // EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 4, EPNUM_CDC_2_NOTIF, 8,
+                       EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
+    
+    // CDC 3: Interface number, string index, EP notification address and size,
+    // EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_3, 4, EPNUM_CDC_3_NOTIF, 8,
+                       EPNUM_CDC_3_OUT, EPNUM_CDC_3_IN, 64)
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
