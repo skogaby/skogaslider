@@ -52,6 +52,26 @@ void LedController::set_divider(uint8_t divider, uint8_t red, uint8_t green, uin
 }
 
 /**
+ * @brief Sets the color of the LEDs for a particular group of LEDs for the air towers. Tower
+ * 0 is the left tower, 1 is the right tower. Each tower has 3 groups of 3 LEDs each, with
+ * group 0 being on the bottom and group 2 being on the top.
+ */
+void LedController::set_tower(uint8_t tower, uint8_t group, uint8_t red, uint8_t green, uint8_t blue) {
+    uint8_t led_index = 0;
+    auto color = PicoLed::RGB(red, green, blue);
+
+    // To make logic easier, the left tower is tower 0. However, the PCB itself is wired up with right tower
+    // first, so if tower is 0, offset the LED index by 9 to skip the right tower LEDs
+    if (tower == 0) {
+        led_index = 56 + (3 * group);
+    } else {
+        led_index = 47 + (3 * group);
+    }
+
+    led_strip.fill(color, led_index, 3);
+}
+
+/**
  * @brief Changes the brightness of the LED strip to the given value.
  */
 void LedController::set_brightness(uint8_t brightness) {

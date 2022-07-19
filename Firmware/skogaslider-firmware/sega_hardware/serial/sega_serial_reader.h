@@ -30,7 +30,7 @@ class SegaSerialReader {
     public:
         SegaSerialReader();
         bool read_slider_packet(SliderPacket* dst);
-        bool read_led_packet(SliderPacket* dst, uint8_t addr);
+        bool read_led_packet(LedRequestPacket* dst, uint8_t addr);
         bool slider_packet_in_progress();
 
     private:

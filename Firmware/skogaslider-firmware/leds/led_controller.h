@@ -32,6 +32,7 @@ class LedController {
         void set_all(uint8_t red, uint8_t green, uint8_t blue);
         void set_key(uint8_t key, uint8_t red, uint8_t green, uint8_t blue);
         void set_divider(uint8_t divider, uint8_t red, uint8_t green, uint8_t blue);
+        void set_tower(uint8_t tower, uint8_t group, uint8_t red, uint8_t green, uint8_t blue);
         void set_brightness(uint8_t brightness);
         void update();
 };

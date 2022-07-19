@@ -37,23 +37,6 @@ enum LedCommandId {
 };
 
 /**
- * @brief This is a "generic" LED packet, which is the top-level structure used for both requests and responses.
- * However, the payload structure of requests and responses represent their own structures themselves.
- */
-struct GenericLedPacket {
-    /** The destination address for the packet (1 for host, 2 for LED board) */
-    uint8_t dest_address;
-    /** The source address for the packet (1 for host, 2 for LED board) */
-    uint8_t src_address;
-    /** The length of the data field to read in (number of bytes) */
-    uint8_t length;
-    /** The actual data for this packet. The structure of this data is different for requests and responses. */
-    uint8_t* data;
-    /** The checksum for the packet, calculated during send for outgoing packets */
-    uint8_t checksum;
-};
-
-/**
  * @brief Structure which handles request packets from the host to the LED board.
  */
 struct LedRequestPacket {
