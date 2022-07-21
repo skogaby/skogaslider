@@ -133,8 +133,8 @@ LedResponsePacket* SegaLedBoard::handle_board_status() {
 LedResponsePacket* SegaLedBoard::handle_fw_sum() {
     response_packet->command = FW_SUM;
     response_packet->length = 2;
-    response_packet->payload[0] = (0xADF7 >> 8) & 0xFF;
-    response_packet->payload[1] = 0xADF7 & 0xFF;
+    response_packet->payload[0] = 0xAD;
+    response_packet->payload[1] = 0xF7;
 
     return response_packet;
 }
