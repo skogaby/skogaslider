@@ -158,6 +158,10 @@ int main() {
         // Check for LED board packets and process those as well
         if (sega_serial->read_led_packet(&led_request, 0)) {
             sega_led_board->process_packet(&led_request, 0);
+
+            // For now, just update the lights counter for one board
+            // and assume they both update at roughly the same rate
+            lights_update_count++;
         }
 
         if (sega_serial->read_led_packet(&led_request, 1)) {
@@ -178,17 +182,11 @@ int main() {
 
         // Log the current output rate once per second
         if (time_now > time_log) {
-            printf("[Core 0] Output rate: %i Hz", output_count * (1000 / LOG_DELAY));
-
-#ifdef USE_KEYBOARD_OUTPUT
-            printf(" | Lights update rate: %i Hz\n", lights_update_count * (1000 / LOG_DELAY));
-            lights_update_count = 0;
-#else
-            printf("\n");
-#endif
-
+            printf("[Core 0] Output rate: %i Hz | Lights update rate: %i Hz\n",
+                output_count * (1000 / LOG_DELAY), lights_update_count * (1000 / LOG_DELAY));
             time_log = time_now + LOG_DELAY;
             output_count = 0;
+            lights_update_count = 0;
         }
     }
 
