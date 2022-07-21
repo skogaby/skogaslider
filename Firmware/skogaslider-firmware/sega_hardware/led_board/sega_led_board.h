@@ -24,20 +24,24 @@ class SegaLedBoard {
     public:
         SegaLedBoard(LedController* _led_strip);
         void process_packet(LedRequestPacket* request, uint8_t addr);
-        void send_escaped_byte(uint8_t byte, uint8_t itf);
 
     private:
         LedController* led_strip;
-        bool response_enabled;
+        LedResponsePacket* response_packet;
+        uint8_t response_payload[32];
+        uint8_t board_info_payload[16];
+        uint8_t led_data_index[2];
+        bool response_enabled[2];
 
         void send_packet(LedResponsePacket* packet, uint8_t addr);
-        LedResponsePacket* handle_reset(LedRequestPacket* request, uint8_t addr);
-        LedResponsePacket* handle_set_timeout(LedRequestPacket* request, uint8_t addr);
+        LedResponsePacket* handle_reset(uint8_t addr);
+        LedResponsePacket* handle_set_timeout(LedRequestPacket* request);
         LedResponsePacket* handle_set_disable_response(LedRequestPacket* request, uint8_t addr);
         LedResponsePacket* handle_set_led(LedRequestPacket* request, uint8_t addr);
-        LedResponsePacket* handle_board_info(LedRequestPacket* request, uint8_t addr);
-        LedResponsePacket* handle_board_status(LedRequestPacket* request, uint8_t addr);
-        LedResponsePacket* handle_fw_sum(LedRequestPacket* request, uint8_t addr);
-        LedResponsePacket* handle_protocol_ver(LedRequestPacket* request, uint8_t addr);
+        LedResponsePacket* handle_board_info();
+        LedResponsePacket* handle_board_status();
+        LedResponsePacket* handle_fw_sum();
+        LedResponsePacket* handle_protocol_ver();
+        void send_escaped_byte(uint8_t byte, uint8_t itf);
 };
 

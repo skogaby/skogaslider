@@ -12,8 +12,19 @@
  */
 SegaLedBoard::SegaLedBoard(LedController* _led_strip):
     led_strip { _led_strip },
-    response_enabled { false }
+    board_info_payload {
+        0x31, 0x35, 0x30, 0x39, 0x33, 0x2D, 0x30, 0x36,
+        0x0A, 0x36, 0x37, 0x31, 0x30, 0x20, 0xFF, 0x90
+    },
+    response_payload { 0x00 },
+    led_data_index { 50 * 3, 60 * 3 },
+    response_enabled { true }
 {
+    // Initialize response packet constants
+    response_packet = new LedResponsePacket();
+    response_packet->report = 1;
+    response_packet->status = 1;
+    response_packet->payload = &response_payload[0];
 }
 
 /**
@@ -24,10 +35,10 @@ void SegaLedBoard::process_packet(LedRequestPacket* request, uint8_t addr) {
 
     switch (request->command) {
         case LED_RESET:
-            response = handle_reset(request, addr);
+            response = handle_reset(addr);
             break;
         case SET_TIMEOUT:
-            response = handle_set_timeout(request, addr);
+            response = handle_set_timeout(request);
             break;
         case SET_DISABLE_RESPONSE:
             response = handle_set_disable_response(request, addr);
@@ -36,54 +47,131 @@ void SegaLedBoard::process_packet(LedRequestPacket* request, uint8_t addr) {
             response = handle_set_led(request, addr);
             break;
         case BOARD_INFO:
-            response = handle_board_info(request, addr);
+            response = handle_board_info();
             break;
         case BOARD_STATUS:
-            response = handle_board_status(request, addr);
+            response = handle_board_status();
             break;
         case FW_SUM:
-            response = handle_fw_sum(request, addr);
+            response = handle_fw_sum();
             break;
         case PROTOCOL_VER:
-            response = handle_protocol_ver(request, addr);
+            response = handle_protocol_ver();
             break;
     }
 
-    if (response_enabled) {
+    // We shouldn't send responses for LED packets if the responses are disabled; otherwise, every other packet
+    // expects a response in return
+    if (request->command != SET_LED || response_enabled[addr]) {
         send_packet(response, addr);
     }
 }
 
-LedResponsePacket* handle_reset(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a request to reset the board. Enables responses.
+ */
+LedResponsePacket* SegaLedBoard::handle_reset(uint8_t addr) {
+    response_enabled[addr] = true;
+    response_packet->command = LED_RESET;
+    response_packet->length = 0;
+    
+    return response_packet;
 }
 
-LedResponsePacket* handle_set_timeout(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a request to set the timeout value. Currently we just ACK this.
+ */
+LedResponsePacket* SegaLedBoard::handle_set_timeout(LedRequestPacket* request) {
+    response_packet->command = SET_TIMEOUT;
+    response_packet->length = 2;
+    response_packet->payload[0] = request->data[0];
+    response_packet->payload[1] = request->data[1];
+
+    return response_packet;
 }
 
-LedResponsePacket* handle_set_disable_response(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a request to enable or disable responses from the board.
+ */
+LedResponsePacket* SegaLedBoard::handle_set_disable_response(LedRequestPacket* request, uint8_t addr) {
+    response_enabled[addr] = !request->data[0];
+    response_packet->command = SET_DISABLE_RESPONSE;
+    response_packet->length = 1;
+    response_packet->payload[0] = request->data[0];
+
+    return response_packet;
 }
 
-LedResponsePacket* handle_set_led(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a request from the host to get the board information (hardcoded).
+ */
+LedResponsePacket* SegaLedBoard::handle_board_info() {
+    response_packet->command = BOARD_INFO;
+    response_packet->length = 16;
+    memcpy(response_packet->payload, board_info_payload, 16);
+
+    return response_packet;
 }
 
-LedResponsePacket* handle_board_info(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a command to get the board status (hardcoded).
+ */
+LedResponsePacket* SegaLedBoard::handle_board_status() {
+    response_packet->command = BOARD_STATUS;
+    response_packet->length = 4;
+    response_packet->payload[0] = 0;
+    response_packet->payload[1] = 0;
+    response_packet->payload[2] = 0;
+    response_packet->payload[3] = 0;
+
+    return response_packet;
 }
 
-LedResponsePacket* handle_board_status(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a request for the checksum of the firmware (hardcoded).
+ */
+LedResponsePacket* SegaLedBoard::handle_fw_sum() {
+    response_packet->command = FW_SUM;
+    response_packet->length = 2;
+    response_packet->payload[0] = (0xADF7 >> 8) & 0xFF;
+    response_packet->payload[1] = 0xADF7 & 0xFF;
+
+    return response_packet;
 }
 
-LedResponsePacket* handle_fw_sum(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Returns the (hardcoded) protocol version this board supports.
+ */
+LedResponsePacket* SegaLedBoard::handle_protocol_ver() {
+    response_packet->command = PROTOCOL_VER;
+    response_packet->length = 3;
+    response_packet->payload[0] = 0x01;
+    response_packet->payload[1] = 0x01;
+    response_packet->payload[2] = 0x04;
+
+    return response_packet;
 }
 
-LedResponsePacket* handle_protocol_ver(LedRequestPacket* request, uint8_t addr) {
-    return NULL;
+/**
+ * @brief Handles a request to set the actual LED data for the board.
+ */
+LedResponsePacket* SegaLedBoard::handle_set_led(LedRequestPacket* request, uint8_t addr) {
+    // Read the correct index to skip over the billboard LED data in the request payload
+    uint8_t index = led_data_index[addr];
+
+    for (uint8_t i = 0; i < 3; i++) {
+        uint8_t blue = request->data[index + (3 * i)];
+        uint8_t red = request->data[index + (3 * i) + 1];
+        uint8_t green = request->data[index + (3 * i) + 2];
+
+        // Set the appropriate tower light
+        led_strip->set_tower(addr, i, red, green, blue);
+    }
+
+    // Send the response to the host
+    response_packet->command = SET_LED;
+    response_packet->length = 0;
+    return response_packet;
 }
 
 /**

@@ -12,6 +12,7 @@
 #include "pico/multicore.h"
 
 #include "config.h"
+#include "sega_hardware/led_board/sega_led_board.h"
 #include "sega_hardware/serial/sega_serial_reader.h"
 #include "sega_hardware/slider/sega_slider.h"
 #include "leds/led_controller.h"
@@ -51,8 +52,12 @@ UsbOutput* usb_output;
 SegaSerialReader* sega_serial;
 /** Handles packet processing for adhering to the SEGA slider protocol */
 SegaSlider* sega_slider;
+/** Handles packet processing for adhering to the SEGA 15093-06 LED board protocol */
+SegaLedBoard* sega_led_board;
 /** Re-usable packet structure for incoming slider packets. */
 SliderPacket slider_request;
+/** Re-usable packet structure for incoming LED board request packets */
+LedRequestPacket led_request;
 /** This keeps track of the touch states of the keys for reactive lighting updates (combines each key's sensors into one ORed state) */
 bool key_states[16] = { false };
 /** This flag indicates that the light state has been updated and the lights should be refreshed (not for arcade protocol mode) */
@@ -86,6 +91,7 @@ int main() {
     usb_output = new UsbOutput();
     sega_serial = new SegaSerialReader();
     sega_slider = new SegaSlider(touch_slider, led_strip);
+    sega_led_board = new SegaLedBoard(led_strip);
 
     // Launch the input code on the second core
     multicore_launch_core1(main_core_1);
@@ -136,7 +142,7 @@ int main() {
 
         time_now = to_ms_since_boot(get_absolute_time());
 
-#else // USE_KEYBOARD_OUTPUT
+#else
         // Check if any serial packets are available for the slider, and process them if so
         if (sega_serial->read_slider_packet(&slider_request)) {
             time_last_serial_packet = time_now;
@@ -149,6 +155,15 @@ int main() {
             sega_slider->auto_send_reports = false;
         }
 
+        // Check for LED board packets and process those as well
+        if (sega_serial->read_led_packet(&led_request, 0)) {
+            sega_led_board->process_packet(&led_request, 0);
+        }
+
+        if (sega_serial->read_led_packet(&led_request, 1)) {
+            sega_led_board->process_packet(&led_request, 1);
+        }
+
         time_now = to_ms_since_boot(get_absolute_time());
 
         // Send a slider packet to the host, if auto-reporting is enabled, every X ms
@@ -159,7 +174,7 @@ int main() {
             output_count++;
             time_send_report = time_now + SLIDER_REPORT_DELAY;
         }
-#endif // USE_KEYBOARD_OUTPUT
+#endif
 
         // Log the current output rate once per second
         if (time_now > time_log) {

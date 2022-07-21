@@ -170,11 +170,12 @@ SliderPacket* SegaSlider::handle_disable_slider_report() {
 }
 
 /**
- * @brief Handles a request to reset the board. For now we'll just ACK this and revisit
- * it later if needed.
+ * @brief Handles a request to reset the board. For now we'll just ACK this and set the auto
+ * send flag to false.
  * @return SliderPacket An ACK response.
  */
 SliderPacket* SegaSlider::handle_reset() {
+    auto_send_reports = false;
     empty_body_packet.command_id = SLIDER_RESET;
     return &empty_body_packet;
 }
