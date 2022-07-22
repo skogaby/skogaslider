@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
+set(PICO_SDK_PATH "/usr/local/share/pico-sdk")
+
 include(pico_sdk_import.cmake)
 
 project(skogaslider-firmware LANGUAGES C CXX ASM)
@@ -8,7 +10,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 set(PICO_CXX_ENABLE_RTTI 1)
-set(PICO_SDK_PATH "/usr/local/share/pico-sdk")
 
 pico_sdk_init()
 
