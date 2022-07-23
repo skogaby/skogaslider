@@ -34,6 +34,8 @@ enum LedCommandId {
     FW_SUM = 0xF2,
     /** Gets the protocol version the board suports */
     PROTOCOL_VER = 0xF3,
+    /**  Custom command that isn't in the official protocol, but is a utility to see which side (0 for left, 1 for right) this board is for */
+    BOARD_SIDE = 0x27
 };
 
 /**

@@ -42,6 +42,7 @@ class SegaLedBoard {
         LedResponsePacket* handle_board_status();
         LedResponsePacket* handle_fw_sum();
         LedResponsePacket* handle_protocol_ver();
+        LedResponsePacket* handle_board_side(uint8_t addr);
         void send_escaped_byte(uint8_t byte, uint8_t itf);
 };
 

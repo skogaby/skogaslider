@@ -60,6 +60,8 @@ void SegaSlider::process_packet(SliderPacket* request) {
         case GET_HW_INFO:
             response = handle_get_hw_info();
             break;
+        default:
+            break;
     }
 
     // Send a response if the packet needed one
@@ -186,7 +188,7 @@ SliderPacket* SegaSlider::handle_get_hw_info() {
     response_packet->command_id = GET_HW_INFO;
     response_packet->data = &hw_info_response_data[0];
     response_packet->length = 18;
-    
+
     return response_packet;
 }
 

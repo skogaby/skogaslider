@@ -31,7 +31,7 @@ SegaLedBoard::SegaLedBoard(LedController* _led_strip):
  * @brief Processes a request packet from the host, sending a response if necessary.
  */
 void SegaLedBoard::process_packet(LedRequestPacket* request, uint8_t addr) {
-    LedResponsePacket* response;
+    LedResponsePacket* response = NULL;
 
     switch (request->command) {
         case LED_RESET:
@@ -58,11 +58,13 @@ void SegaLedBoard::process_packet(LedRequestPacket* request, uint8_t addr) {
         case PROTOCOL_VER:
             response = handle_protocol_ver();
             break;
+        default:
+            break;
     }
 
     // We shouldn't send responses for LED packets if the responses are disabled; otherwise, every other packet
     // expects a response in return
-    if (request->command != SET_LED || response_enabled[addr]) {
+    if (response != NULL && (request->command != SET_LED || response_enabled[addr])) {
         send_packet(response, addr);
     }
 }
@@ -171,6 +173,17 @@ LedResponsePacket* SegaLedBoard::handle_set_led(LedRequestPacket* request, uint8
     // Send the response to the host
     response_packet->command = SET_LED;
     response_packet->length = 0;
+    return response_packet;
+}
+
+/**
+ * @brief Handles a request to get the side of the cabinet this board is meant for (0 for left, 1 for right).
+ */
+LedResponsePacket* SegaLedBoard::handle_board_side(uint8_t addr) {
+    response_packet->command = BOARD_SIDE;
+    response_packet->length = 1;
+    response_packet->payload[0] = addr;
+    
     return response_packet;
 }
 
