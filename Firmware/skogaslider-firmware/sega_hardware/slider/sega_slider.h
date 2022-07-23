@@ -24,12 +24,7 @@
  */
 class SegaSlider {
     private:
-        // These are packets that can be re-used across calls which should be able to handle
-        // any response without having to create new structs for every packet
-        SliderPacket slider_report_packet;
-        SliderPacket hw_info_packet;
-        SliderPacket empty_body_packet;
-
+        SliderPacket* response_packet;
         TouchSlider* touch_slider;
         LedController* led_strip;
         uint8_t slider_response_data[32];

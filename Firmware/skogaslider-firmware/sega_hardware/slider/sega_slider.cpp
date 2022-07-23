@@ -19,24 +19,9 @@ SegaSlider::SegaSlider(TouchSlider* _slider, LedController* _led_strip):
         0x31, 0x35, 0x33, 0x33, 0x30, 0x20, 0x20, 0x20,
         0xA0, 0x30, 0x36, 0x37, 0x31, 0x32, 0xFF, 0x90,
         0x00, 0x64
-    }
+    },
+    response_packet { new SliderPacket() }
 {
-    // Packet to re-use for slider reports, the address for the data
-    // pointer will always be valid since it points to a class member
-    slider_report_packet.command_id = SLIDER_REPORT;
-    slider_report_packet.data = &slider_response_data[0];
-    slider_report_packet.length = 32;
-
-    // Packet for hardware info responses, which contains hardcoded
-    // board and model information
-    hw_info_packet.command_id = GET_HW_INFO;
-    hw_info_packet.data = &hw_info_response_data[0];
-    hw_info_packet.length = 18;
-
-    // Packet to re-use for responses whose bodies are empty. Set the
-    // command ID as needed
-    empty_body_packet.command_id = 0xFF;
-    empty_body_packet.length = 0;
 }
 
 /**
@@ -54,9 +39,11 @@ uint8_t SegaSlider::map_touch_to_byte(uint16_t value) {
  * @return SliderPacket A response packet, or a  NO_OP packet.
  */
 void SegaSlider::process_packet(SliderPacket* request) {
+    SliderPacket* response = NULL;
+
     switch (request->command_id) {
         case SLIDER_REPORT:
-            send_packet(handle_slider_report());
+            response = handle_slider_report();
             break;
         case LED_REPORT:
             handle_led_report(request);
@@ -65,14 +52,19 @@ void SegaSlider::process_packet(SliderPacket* request) {
             handle_enable_slider_report();
             break;
         case DISABLE_SLIDER_REPORT:
-            send_packet(handle_disable_slider_report());
+            response = handle_disable_slider_report();
             break;
         case SLIDER_RESET:
-            send_packet(handle_reset());
+            response = handle_reset();
             break;
         case GET_HW_INFO:
-            send_packet(handle_get_hw_info());
+            response = handle_get_hw_info();
             break;
+    }
+
+    // Send a response if the packet needed one
+    if (response != NULL) {
+        send_packet(response);
     }
 }
 
@@ -82,6 +74,10 @@ void SegaSlider::process_packet(SliderPacket* request) {
  * @return SliderPacket A slider report packet containing all sensor readouts
  */
 SliderPacket* SegaSlider::generate_slider_report() {
+    response_packet->command_id = SLIDER_REPORT;
+    response_packet->data = &slider_response_data[0];
+    response_packet->length = 32;
+
     // Re-order the touch states into the right format. Internally, we store them with sensor 0 in the
     // top-left position on the slider, but Sega has it in the top-right position, meaning we can't
     // do a simple reversal here. Also, we need to map the 10-bit touch values into 8-bit values.
@@ -109,7 +105,7 @@ SliderPacket* SegaSlider::generate_slider_report() {
     }
 #endif
 
-    return &slider_report_packet;
+    return response_packet;
 }
 
 /**
@@ -117,8 +113,8 @@ SliderPacket* SegaSlider::generate_slider_report() {
  * @return SliderPacket A slider report packet containing all sensor readouts
  */
 SliderPacket* SegaSlider::handle_slider_report() {
-    generate_slider_report();
-    return &slider_report_packet;
+    SliderPacket* response = generate_slider_report();
+    return response;
 }
 
 /**
@@ -163,9 +159,10 @@ void SegaSlider::handle_enable_slider_report() {
  */
 SliderPacket* SegaSlider::handle_disable_slider_report() {
     auto_send_reports = false;
+    response_packet->command_id = DISABLE_SLIDER_REPORT;
+    response_packet->length = 0;
 
-    empty_body_packet.command_id = DISABLE_SLIDER_REPORT;
-    return &empty_body_packet;
+    return response_packet;
 }
 
 /**
@@ -175,8 +172,10 @@ SliderPacket* SegaSlider::handle_disable_slider_report() {
  */
 SliderPacket* SegaSlider::handle_reset() {
     auto_send_reports = false;
-    empty_body_packet.command_id = SLIDER_RESET;
-    return &empty_body_packet;
+    response_packet->command_id = SLIDER_RESET;
+    response_packet->length = 0;
+
+    return response_packet;
 }
 
 /**
@@ -184,7 +183,11 @@ SliderPacket* SegaSlider::handle_reset() {
  * @return SliderPacket A packet containing board info
  */
 SliderPacket* SegaSlider::handle_get_hw_info() {
-    return &hw_info_packet;
+    response_packet->command_id = GET_HW_INFO;
+    response_packet->data = &hw_info_response_data[0];
+    response_packet->length = 18;
+    
+    return response_packet;
 }
 
 /**
