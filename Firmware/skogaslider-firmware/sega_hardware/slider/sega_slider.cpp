@@ -68,7 +68,6 @@ void SegaSlider::process_packet(SliderPacket* request) {
             send_packet(handle_disable_slider_report());
             break;
         case SLIDER_RESET:
-            printf("Received a reset request\n");
             send_packet(handle_reset());
             break;
         case GET_HW_INFO:

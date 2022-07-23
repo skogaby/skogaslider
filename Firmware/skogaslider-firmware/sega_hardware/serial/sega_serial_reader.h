@@ -43,23 +43,21 @@ class SegaSerialReader {
         /** Flag for whether the last byte read was an escape byte for the 3 packet types */
         bool last_byte_escape[3];
         /** Buffers to hold the last sync bytes read for all 3 packet types */
-        uint8_t sync[3];
+        int sync[3];
         /** Buffers to hold the last data length bytes read for all 3 packet types */
         int data_length[3];
         /** Keep track of how many bytes of the current packet have been read for all 3 packet types */
-        int bytes_read[3];
+        uint8_t bytes_read[3];
         /** Keep track of the last checksum read for all 3 packet types */
         int checksum[3];
-        /** Track the next byte to be processed, or -1 if there are no available bytes */
-        int next_byte[3];
+        /** Buffer the last-read destination addresses for LED packets */
+        int led_dst_addr[2];
+        /** Buffer the last-read source addresses for LED packets */
+        int led_src_addr[2];
+        /** Keeps track of the last slider command ID read */
+        int slider_command_id;
         /** Flag to say whether a packet is still in the process of being read (even if no available bytes yet) */
         bool packet_in_progress[3];
-        /** Buffer the last-read destination addresses for LED packets */
-        uint8_t led_dst_addr[2];
-        /** Buffer the last-read source addresses for LED packets */
-        uint8_t led_src_addr[2];
-        /** Keeps track of the last slider command ID read */
-        uint8_t slider_command_id;
 
         int read_unescaped_serial_byte(uint8_t itf, uint8_t escape_byte, uint8_t board);
         int read_serial_byte(uint8_t itf);

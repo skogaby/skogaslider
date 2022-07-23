@@ -182,7 +182,7 @@ int main() {
 
         // Log the current output rate once per second
         if (time_now > time_log) {
-            printf("[Core 0] Output rate: %i Hz | Lights update rate: %i Hz\n",
+            printf("[Core 0] Output rate: %i Hz | LED board update rate: %i Hz\n",
                 output_count * (1000 / LOG_DELAY), lights_update_count * (1000 / LOG_DELAY));
             time_log = time_now + LOG_DELAY;
             output_count = 0;

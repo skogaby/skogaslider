@@ -14,16 +14,15 @@ SegaSerialReader::SegaSerialReader():
     serial_buf_slider { 0 },
     serial_buf_led_1 { 0 },
     serial_buf_led_2 { 0 },
-    last_byte_escape { false },
-    sync { 0 },
-    data_length { -1 },
-    bytes_read { 0 },
-    checksum { -1 },
-    next_byte { -1 },
-    packet_in_progress { false },
-    led_dst_addr { 0 },
-    led_src_addr { 0 },
-    slider_command_id { 0 }
+    last_byte_escape { false, false, false },
+    sync { -1, -1, -1 },
+    data_length { -1, -1, -1 },
+    bytes_read { 0, 0, 0 },
+    checksum { -1, -1, -1 },
+    packet_in_progress { false, false, false },
+    led_dst_addr { -1, -1 },
+    led_src_addr { -1, -1 },
+    slider_command_id { -1 }
 {
 }
 
@@ -35,42 +34,43 @@ SegaSerialReader::SegaSerialReader():
 bool SegaSerialReader::read_slider_packet(SliderPacket* dst) {
     bool packet_available = false;
     uint8_t itf = ITF_SLIDER;
+    int next_byte;
 
     // If we're at the beginning of a packet, we need to read bytes without unescaping
-    if (sync[0] == 0) {
-        next_byte[0] = read_serial_byte(itf);
+    if (sync[0] == -1) {
+        next_byte = read_serial_byte(itf);
     } else {
-        next_byte[0] = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
+        next_byte = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
     }
 
     // There is at least 1 byte available, process it
-    while (next_byte[0] != -1) {
-        if (sync[0] == 0) {
+    while (next_byte != -1) {
+        if (sync[0] == -1) {
             // We haven't read the next packet begin yet
-            if (next_byte[0] == SLIDER_PACKET_BEGIN) {
+            if (next_byte == SLIDER_PACKET_BEGIN) {
                 packet_in_progress[0] = true;
-                sync[0] = next_byte[0];
-                next_byte[0] = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
+                sync[0] = next_byte;
+                next_byte = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
             } else {
-                next_byte[0] = read_serial_byte(itf);
+                next_byte = read_serial_byte(itf);
             }
-        } else if (slider_command_id == 0) {
+        } else if (slider_command_id == -1) {
             // We've read the SYNC byte, haven't read a command ID yet
-            slider_command_id = next_byte[0];
-            next_byte[0] = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
+            slider_command_id = next_byte;
+            next_byte = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
         } else if (data_length[0] == -1) {
             // We've read the command ID, haven't read the data length yet
-            data_length[0] = next_byte[0];
-            next_byte[0] = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
+            data_length[0] = next_byte;
+            next_byte = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
         } else if (bytes_read[0] != data_length[0]) {
             // We're inside the body of a packet, read bytes until we've
             // read them all
-            serial_buf_slider[bytes_read[0]] = next_byte[0];
+            serial_buf_slider[bytes_read[0]] = next_byte;
             bytes_read[0] = bytes_read[0] + 1;
-            next_byte[0] = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
+            next_byte = read_unescaped_serial_byte(itf, SLIDER_PACKET_ESCAPE, 0);
         } else if (checksum[0] == -1) {
             // We've finished the packet body, read the checksum and then return the packet
-            checksum[0] = next_byte[0];
+            checksum[0] = next_byte;
 
             // Construct the request packet
             dst->command_id = slider_command_id;
@@ -80,12 +80,12 @@ bool SegaSerialReader::read_slider_packet(SliderPacket* dst) {
             packet_available = true;
 
             // Reset the packet states for the next read
-            sync[0] = 0;
-            slider_command_id = 0;
+            sync[0] = -1;
+            slider_command_id = -1;
             data_length[0] = -1;
             bytes_read[0] = 0;
             checksum[0] = -1;
-            next_byte[0] = -1;
+            next_byte = -1;
             packet_in_progress[0] = false;
         }
     }
@@ -103,6 +103,7 @@ bool SegaSerialReader::read_led_packet(LedRequestPacket* dst, uint8_t addr) {
     uint8_t itf;
     uint8_t* serial_buf;
     uint8_t index = addr + 1;
+    int next_byte;
 
     if (addr == 0) {
         itf = ITF_LED_0;
@@ -113,44 +114,44 @@ bool SegaSerialReader::read_led_packet(LedRequestPacket* dst, uint8_t addr) {
     }
 
     // If we're at the beginning of a packet, we need to read bytes without unescaping
-    if (sync[index] == 0) {
-        next_byte[index] = read_serial_byte(itf);
+    if (sync[index] == -1) {
+        next_byte = read_serial_byte(itf);
     } else {
-        next_byte[index] = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
+        next_byte = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
     }
 
     // There is at least 1 byte available, process it
-    while (next_byte[index] != -1) {
-        if (sync[index] == 0) {
+    while (next_byte != -1) {
+        if (sync[index] == -1) {
             // We haven't read the next packet begin yet
-            if (next_byte[index] == LED_PACKET_BEGIN) {
+            if (next_byte == LED_PACKET_BEGIN) {
                 packet_in_progress[index] = true;
-                sync[index] = next_byte[index];
-                next_byte[index] = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
+                sync[index] = next_byte;
+                next_byte = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
             } else {
-                next_byte[index] = read_serial_byte(itf);
+                next_byte = read_serial_byte(itf);
             }
-        } else if (led_dst_addr[addr] == 0) {
+        } else if (led_dst_addr[addr] == -1) {
             // We've read the SYNC byte, haven't read destination address yet
-            led_dst_addr[addr] = next_byte[index];
-            next_byte[index] = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
-        } else if (led_src_addr[addr] == 0) {
+            led_dst_addr[addr] = next_byte;
+            next_byte = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
+        } else if (led_src_addr[addr] == -1) {
             // We've read the destination byte, haven't read source address yet
-            led_src_addr[addr] = next_byte[index];
-            next_byte[index] = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
+            led_src_addr[addr] = next_byte;
+            next_byte = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
         } else if (data_length[index] == -1) {
             // We've read the addresses, haven't read the data length yet
-            data_length[index] = next_byte[index];
-            next_byte[index] = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
+            data_length[index] = next_byte;
+            next_byte = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
         } else if (bytes_read[index] != data_length[index]) {
             // We're inside the body of a packet, read bytes until we've
             // read them all
-            serial_buf[bytes_read[index]] = next_byte[index];
+            serial_buf[bytes_read[index]] = next_byte;
             bytes_read[index] = bytes_read[index] + 1;
-            next_byte[index] = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
+            next_byte = read_unescaped_serial_byte(itf, LED_PACKET_ESCAPE, index);
         } else if (checksum[index] == -1) {
             // We've finished the packet body, read the checksum and then return the packet
-            checksum[index] = next_byte[index];
+            checksum[index] = next_byte;
 
             // Construct the request packet
             dst->command = serial_buf[0];
@@ -159,13 +160,13 @@ bool SegaSerialReader::read_led_packet(LedRequestPacket* dst, uint8_t addr) {
             packet_available = true;
 
             // Reset the packet states for the next read
-            sync[index] = 0;
-            led_dst_addr[addr] = 0;
-            led_src_addr[addr] = 0;
+            sync[index] = -1;
+            led_dst_addr[addr] = -1;
+            led_src_addr[addr] = -1;
             data_length[index] = -1;
             bytes_read[index] = 0;
             checksum[index] = -1;
-            next_byte[index] = -1;
+            next_byte = -1;
             packet_in_progress[index] = false;
         }
     }
