@@ -60,6 +60,12 @@ void SegaSlider::process_packet(SliderPacket* request) {
         case GET_HW_INFO:
             response = handle_get_hw_info();
             break;
+        case SET_SHORT_RAW_COUNT_OFFSET:
+            response = handle_set_short_raw_count_offset();
+            break;
+        case SET_SHORT_RAW_COUNT_SHIFT:
+            response = handle_set_short_raw_count_shift();
+            break;
         default:
             break;
     }
@@ -131,7 +137,7 @@ void SegaSlider::handle_led_report(SliderPacket* request) {
     uint8_t key_index = 15;
     uint8_t divider_index = 14;
 
-    for (uint8_t i = 0; i < 32; i++) {
+    for (uint8_t i = 0; i < 31; i++) {
         uint8_t blue = request->data[(i *  3) + 1];
         uint8_t red = request->data[(i *  3) + 2];
         uint8_t green = request->data[(i *  3) + 3];
@@ -188,6 +194,28 @@ SliderPacket* SegaSlider::handle_get_hw_info() {
     response_packet->command_id = GET_HW_INFO;
     response_packet->data = &hw_info_response_data[0];
     response_packet->length = 18;
+
+    return response_packet;
+}
+
+/**
+ * @brief Handles a request to set the offset for the raw count reports. Just ACK for now.
+ * @return SliderPacket*  An ACK response.
+ */
+SliderPacket* SegaSlider::handle_set_short_raw_count_offset() {
+    response_packet->command_id = SET_SHORT_RAW_COUNT_OFFSET;
+    response_packet->length = 0;
+
+    return response_packet;
+}
+
+/**
+ * @brief Handles a request to set the shifts for the raw count reports. Just ACK for now.
+ * @return SliderPacket*  An ACK response.
+ */
+SliderPacket* SegaSlider::handle_set_short_raw_count_shift() {
+    response_packet->command_id = SET_SHORT_RAW_COUNT_SHIFT;
+    response_packet->length = 0;
 
     return response_packet;
 }

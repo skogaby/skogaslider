@@ -31,7 +31,11 @@ enum SliderCommandId {
     /** Request from the host to reset the slider */
     SLIDER_RESET = 0x10,
     /** Request from the host to return the hardware information about the slider */
-    GET_HW_INFO = 0xF0
+    GET_HW_INFO = 0xF0,
+    /** Request to set the offset for raw count reports */
+    SET_SHORT_RAW_COUNT_OFFSET = 0x09,
+    /** Request to set the shifts for raw count reports */
+    SET_SHORT_RAW_COUNT_SHIFT = 0x0A,
 };
 
 /**

@@ -40,6 +40,8 @@ class SegaSlider {
         SliderPacket* handle_get_hw_info();
         void send_packet(SliderPacket* packet);
         void send_escaped_byte(uint8_t byte);
+        SliderPacket* handle_set_short_raw_count_offset();
+        SliderPacket* handle_set_short_raw_count_shift();
 
     public:
         bool auto_send_reports;
