@@ -394,7 +394,7 @@
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.2,
+        "track_width": 0.3,
         "via_diameter": 0.4,
         "via_drill": 0.3,
         "wire_width": 6.0
@@ -430,7 +430,8 @@
         "microvia_drill": 0.1,
         "name": "Power",
         "nets": [
-          "+5V"
+          "+5V",
+          "Net-(D1-Pad2)"
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
@@ -450,12 +451,18 @@
         "microvia_drill": 0.1,
         "name": "USB Data",
         "nets": [
+          "/PRE_USB_D+",
+          "/PRE_USB_D-",
+          "/RGB_DO",
+          "/RGB_LED",
+          "/RIGHT_RGB_DO",
+          "/SLIDER_RGB_DO",
           "/USB_D+",
           "/USB_D-"
         ],
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.4,
+        "track_width": 0.2,
         "via_diameter": 0.6,
         "via_drill": 0.35,
         "wire_width": 6.0
@@ -472,7 +479,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "skogaslider-main-pcb.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
