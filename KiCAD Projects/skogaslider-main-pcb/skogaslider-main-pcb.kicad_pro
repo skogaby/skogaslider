@@ -479,7 +479,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "skogaslider-main-pcb.step",
+      "step": "../../../skogaslider-main-pcb.STEP",
       "vrml": "skogaslider-main-pcb.wrl"
     },
     "page_layout_descr_file": ""
